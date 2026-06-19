@@ -1,0 +1,81 @@
+---
+import { getSimpleProductPrice, getVariableProductPriceRange } from '../../lib/price-utils';
+
+interface Variation {
+  price: string | number | null;
+  regularPrice: string | number | null;
+  salePrice: string | number | null;
+}
+
+interface Product {
+  name: string;
+  price: string | number | null;
+  regularPrice: string | number | null;
+  salePrice: string | number | null;
+  stockStatus: string;
+  variations?: {
+    nodes: Variation[];
+  } | null;
+}
+
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+
+const isVariable = product.variations?.nodes && product.variations.nodes.length > 0;
+const priceDisplay = isVariable
+  ? getVariableProductPriceRange(product.variations!.nodes)
+  : getSimpleProductPrice(product.price, product.regularPrice, product.salePrice);
+---
+
+<div>
+  <h1 class="font-(--font-heading) text-4xl text-(--color-text-base)">
+    {product.name}
+  </h1>
+
+  <div
+    id="product-price"
+    class="mt-4 text-2xl font-semibold text-(--color-text-base)"
+  >
+    {isVariable ? (
+      <div id="price-range" data-type="variable">
+        {priceDisplay.isRange ? (
+          <span class="text-(--color-btn-cta)">
+            {priceDisplay.min} - {priceDisplay.max}
+          </span>
+        ) : (
+          <span class="text-(--color-btn-cta)">
+            {priceDisplay.min}
+          </span>
+        )}
+      </div>
+    ) : (
+      <div id="price-simple" data-type="simple">
+        {priceDisplay.current ? (
+          <div class="flex items-center gap-3">
+            <span class="text-(--color-btn-cta)">
+              {priceDisplay.current}
+            </span>
+
+            {priceDisplay.regular && (
+              <span class="line-through text-sm text-(--color-text-muted)">
+                {priceDisplay.regular}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span class="text-(--color-text-muted)">Price on request</span>
+        )}
+      </div>
+    )}
+  </div>
+
+  <div
+    id="product-stock"
+    class="mt-2 text-sm text-green-600"
+  >
+    {product.stockStatus}
+  </div>
+</div>

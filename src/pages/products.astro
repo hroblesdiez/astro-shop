@@ -1,0 +1,246 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import {
+  getProductsFiltered,
+  getCategories,
+  CATS_WITH_SIZE,
+  CATS_WITH_COLOR,
+  getSizesForCategory,
+  COLORS,
+} from '../lib/products';
+
+const url = Astro.url;
+const category   = url.searchParams.get('category') ?? undefined;
+const after      = url.searchParams.get('after') ?? undefined;
+const minPrice   = url.searchParams.get('minPrice') ? Number(url.searchParams.get('minPrice')) : undefined;
+const maxPrice   = url.searchParams.get('maxPrice') ? Number(url.searchParams.get('maxPrice')) : undefined;
+const sortParam  = url.searchParams.get('sort') ?? '';
+const size      = url.searchParams.get('size') ?? undefined;
+const color      = url.searchParams.get('color') ?? undefined;
+
+const showSizeFilter  = !!category && CATS_WITH_SIZE.has(category);
+const showColorFilter = !!category && CATS_WITH_COLOR.has(category);
+const sizes = category ? getSizesForCategory(category) : [];
+
+const sortMap: Record<string, { field: string; order: string }[]> = {
+  'price-asc':  [{ field: 'PRICE', order: 'ASC' }],
+  'price-desc': [{ field: 'PRICE', order: 'DESC' }],
+  'name-asc':   [{ field: 'NAME', order: 'ASC' }],
+  'name-desc':  [{ field: 'NAME', order: 'DESC' }],
+};
+
+const orderby = sortMap[sortParam] ?? undefined;
+
+const [{ nodes: allProducts, pageInfo }, categories] = await Promise.all([
+  getProductsFiltered({ first: 100, after, category, minPrice, maxPrice, orderby }),
+  getCategories(),
+]);
+
+// Client-side attribute filtering (WooGraphQL does not support filtering by variation attribute in where clause)
+const products = allProducts.filter((p: any) => {
+  if (!size && !color) return true;
+  const attrs: { name: string; options: string[] }[] = p.attributes?.nodes ?? [];
+
+  const sizeMatch = !size || attrs.some(
+    (a) => a.name === 'pa_size' && a.options.map((o: string) => o.toLowerCase()).includes(size.toLowerCase())
+  );
+  const colorMatch = !color || attrs.some(
+    (a) => a.name === 'pa_color' && a.options.map((o: string) => o.toLowerCase()).includes(color.toLowerCase())
+  );
+
+  return sizeMatch && colorMatch;
+});
+
+function buildUrl(params: Record<string, string | undefined>) {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v) p.set(k, v); });
+  return `/products${p.toString() ? '?' + p.toString() : ''}`;
+}
+
+// Preserve all current params except the one being changed
+function filterUrl(key: string, value: string | undefined) {
+  return buildUrl({
+    category,
+    sort: sortParam || undefined,
+    minPrice: minPrice?.toString(),
+    maxPrice: maxPrice?.toString(),
+    size: key === 'size' ? value : size,
+    color: key === 'color' ? value : color,
+    // reset pagination when filters change
+    after: undefined,
+  });
+}
+---
+
+<Layout title="Shop">
+  <div class="max-w-7xl mx-auto px-4 py-12">
+
+    <div class="mb-8 flex items-center justify-between">
+      <h1 class="font-(--font-heading) text-4xl text-(--color-text-base)">All Products</h1>
+      <p class="text-(--color-text-muted) text-sm">{products.length} results</p>
+    </div>
+
+    <!-- Category filter -->
+    <div class="mb-6 flex flex-wrap gap-2 border-b border-(--color-border) pb-6">
+      <a
+        href={buildUrl({ sort: sortParam || undefined, minPrice: minPrice?.toString(), maxPrice: maxPrice?.toString() })}
+        class={`px-4 py-2 text-sm border transition-colors ${!category ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+      >
+        All
+      </a>
+      {categories.map((cat: any) => (
+        <a
+          href={buildUrl({ category: cat.slug, sort: sortParam || undefined, minPrice: minPrice?.toString(), maxPrice: maxPrice?.toString() })}
+          class={`px-4 py-2 text-sm border transition-colors ${category === cat.slug ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+        >
+          {cat.name}
+        </a>
+      ))}
+    </div>
+
+    <!-- Size filter (contextual) -->
+    {showSizeFilter && (
+      <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-(--color-border) pb-4">
+        <span class="text-sm text-(--color-text-muted) mr-1">Size:</span>
+        <a
+          href={filterUrl('size', undefined)}
+          class={`px-3 py-1 text-xs border transition-colors ${!size ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+        >
+          All
+        </a>
+        {sizes.map((s) => (
+          <a
+            href={filterUrl('size', s)}
+            class={`px-3 py-1 text-xs border transition-colors ${size === s ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+          >
+            {s}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Color filter (contextual) -->
+    {showColorFilter && (
+      <div class="mb-6 flex flex-wrap items-center gap-2 border-b border-(--color-border) pb-4">
+        <span class="text-sm text-(--color-text-muted) mr-1">Color:</span>
+        <a
+          href={filterUrl('color', undefined)}
+          class={`px-3 py-1 text-xs border transition-colors ${!color ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+        >
+          All
+        </a>
+        {COLORS.map((c) => (
+          <a
+            href={filterUrl('color', c)}
+            class={`px-3 py-1 text-xs border transition-colors ${color === c ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+          >
+            {c}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Sort + Price filters -->
+    <div class="mb-8 flex flex-wrap items-center gap-4">
+
+      <!-- Sort -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-(--color-text-muted)">Sort:</span>
+        <div class="flex gap-2">
+          {[
+            { label: 'Default', value: '' },
+            { label: 'Price ↑', value: 'price-asc' },
+            { label: 'Price ↓', value: 'price-desc' },
+            { label: 'Name A-Z', value: 'name-asc' },
+            { label: 'Name Z-A', value: 'name-desc' },
+          ].map(({ label, value }) => (
+            <a
+              href={buildUrl({ category, sort: value || undefined, minPrice: minPrice?.toString(), maxPrice: maxPrice?.toString(), size, color })}
+              class={`px-3 py-1.5 text-xs border transition-colors ${sortParam === value ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <!-- Price range -->
+      <form method="get" action="/products" class="flex items-center gap-2 ml-auto">
+        {category  && <input type="hidden" name="category" value={category} />}
+        {sortParam && <input type="hidden" name="sort" value={sortParam} />}
+        {size     && <input type="hidden" name="size" value={size} />}
+        {color     && <input type="hidden" name="color" value={color} />}
+        <span class="text-sm text-(--color-text-muted)">Price:</span>
+        <input
+          type="number"
+          name="minPrice"
+          placeholder="Min"
+          value={minPrice ?? ''}
+          min="0"
+          class="w-20 px-2 py-1.5 text-xs border border-(--color-border) bg-(--color-surface) outline-none focus:border-(--color-btn-cta) transition-colors"
+        />
+        <span class="text-xs text-(--color-text-muted)">—</span>
+        <input
+          type="number"
+          name="maxPrice"
+          placeholder="Max"
+          value={maxPrice ?? ''}
+          min="0"
+          class="w-20 px-2 py-1.5 text-xs border border-(--color-border) bg-(--color-surface) outline-none focus:border-(--color-btn-cta) transition-colors"
+        />
+        <button
+          type="submit"
+          class="px-3 py-1.5 text-xs bg-(--color-btn-cta) text-white hover:bg-(--color-btn-cta-hover) transition-colors"
+        >
+          Apply
+        </button>
+        {(minPrice || maxPrice) && (
+          <a
+            href={buildUrl({ category, sort: sortParam || undefined, size, color })}
+            class="px-3 py-1.5 text-xs border border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta) transition-colors"
+          >
+            Clear
+          </a>
+        )}
+      </form>
+
+    </div>
+
+    <!-- Grid -->
+    {products.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {products.map((p: any) => (
+          <ProductCard
+            databaseId={p.databaseId}
+            name={p.name}
+            slug={p.slug}
+            price={p.price}
+            regularPrice={p.regularPrice}
+            salePrice={p.salePrice}
+            image={p.image}
+            isVariable={Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0}
+          />
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-24">
+        <p class="text-(--color-text-muted) text-lg">No products found.</p>
+        <a href="/products" class="mt-4 inline-block text-sm text-(--color-btn-cta) hover:underline">Clear filters</a>
+      </div>
+    )}
+
+    <!-- Pagination -->
+    {pageInfo.hasNextPage && (
+      <div class="text-center mt-12">
+        <a
+          href={buildUrl({ category, sort: sortParam || undefined, minPrice: minPrice?.toString(), maxPrice: maxPrice?.toString(), size, color, after: pageInfo.endCursor })}
+          class="border border-(--color-btn-cta) text-(--color-btn-cta) px-10 py-3 text-sm font-medium tracking-wide hover:bg-(--color-btn-cta) hover:text-white transition-colors inline-block"
+        >
+          Load More
+        </a>
+      </div>
+    )}
+
+  </div>
+</Layout>

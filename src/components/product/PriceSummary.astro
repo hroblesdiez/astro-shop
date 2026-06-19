@@ -1,0 +1,108 @@
+---
+interface Props {
+  unitPrice?: string;
+}
+
+const { unitPrice } = Astro.props;
+---
+
+<div
+  id="price-summary"
+  class="mt-6 p-4 bg-(--color-surface) border border-(--color-border)"
+>
+  <div class="space-y-2 text-sm">
+    <div class="flex justify-between text-(--color-text-base)">
+      <span>Unit price:</span>
+      <span id="summary-unit-price" class="font-medium">
+        {unitPrice || 'Select attributes'}
+      </span>
+    </div>
+
+    <div class="flex justify-between text-(--color-text-base)">
+      <span>Quantity:</span>
+      <span id="summary-quantity" class="font-medium">1</span>
+    </div>
+
+    <div class="border-t border-(--color-border) pt-2 mt-2 flex justify-between text-base font-semibold text-(--color-btn-cta)">
+      <span>Total:</span>
+      <span id="summary-total">
+        {unitPrice ? unitPrice : 'Select attributes'}
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+  console.log('[PriceSummary] Script loading immediately');
+
+  function extractNumericValue(price) {
+    const cleaned = price.replace(/[^\d,.-]/g, "").replace(",", ".");
+    return parseFloat(cleaned);
+  }
+
+  function formatPriceDisplay(numPrice) {
+    return numPrice.toLocaleString("es-ES", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }) + "€";
+  }
+
+  function updatePriceSummary() {
+    const unitPriceEl = document.getElementById('summary-unit-price');
+    const quantityEl = document.getElementById('summary-quantity');
+    const totalEl = document.getElementById('summary-total');
+    const quantityInput = document.getElementById('quantity-input');
+
+    if (!unitPriceEl || !quantityEl || !totalEl) {
+      console.warn('[PriceSummary] Elements not found yet');
+      return;
+    }
+
+    const unitPriceText = unitPriceEl.textContent.trim();
+    console.log('[PriceSummary] Update called. Unit price text:', unitPriceText);
+
+    if (!unitPriceText || unitPriceText === 'Select attributes') {
+      console.log('[PriceSummary] Waiting for attribute selection');
+      totalEl.textContent = 'Select attributes';
+      return;
+    }
+
+    const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
+    const unitNumPrice = extractNumericValue(unitPriceText);
+    const totalNumPrice = unitNumPrice * quantity;
+
+    console.log('[PriceSummary] Updating: quantity=' + quantity + ', unitPrice=' + unitNumPrice + ', total=' + totalNumPrice);
+
+    quantityEl.textContent = quantity.toString();
+    totalEl.textContent = formatPriceDisplay(totalNumPrice);
+  }
+
+  // Set up listeners immediately without waiting
+  console.log('[PriceSummary] Setting up event listeners');
+
+  window.addEventListener('quantity-changed', function(e) {
+    console.log('[PriceSummary] Received quantity-changed event:', e.detail);
+    updatePriceSummary();
+  });
+
+  window.addEventListener('variation-selected', function(e) {
+    console.log('[PriceSummary] Received variation-selected event:', e.detail);
+    const unitPrice = e.detail && e.detail.unitPrice;
+    if (unitPrice) {
+      const unitPriceEl = document.getElementById('summary-unit-price');
+      if (unitPriceEl) {
+        console.log('[PriceSummary] Setting unit price to:', unitPrice);
+        unitPriceEl.textContent = unitPrice;
+        setTimeout(function() {
+          updatePriceSummary();
+        }, 0);
+      }
+    }
+  });
+
+  // Try to update immediately
+  setTimeout(function() {
+    console.log('[PriceSummary] Initial update after timeout');
+    updatePriceSummary();
+  }, 100);
+</script>

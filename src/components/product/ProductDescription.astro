@@ -1,0 +1,16 @@
+---
+interface Props {
+  html?: string;
+}
+
+const { html } = Astro.props;
+---
+
+{
+  html && (
+    <div
+      class="prose max-w-none mt-10"
+      set:html={html}
+    />
+  )
+}

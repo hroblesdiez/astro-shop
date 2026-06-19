@@ -1,0 +1,21 @@
+{
+  "name": "Astro Shop",
+  "short_name": "AstroShop",
+  "description": "A headless WooCommerce store built with Astro, GraphQL and WooCommerce.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

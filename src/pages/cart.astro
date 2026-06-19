@@ -1,0 +1,315 @@
+---
+import Layout from '../layouts/Layout.astro';
+// Dedicated Cart Page Template
+---
+
+<Layout title="Your Shopping Cart" description="Review items in your cart before moving forward to checkout.">
+  <div class="max-w-7xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold tracking-tight mb-8">Shopping Cart</h1>
+
+    <div id="cart-page-loading" class="flex flex-col items-center justify-center py-24 text-neutral-500">
+      <p class="text-sm">Loading your cart details...</p>
+    </div>
+
+    <!-- Empty State Wrapper (Initially hidden) -->
+    <div id="cart-page-empty" class="hidden flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
+      <div class="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-5 text-neutral-400">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-neutral-900">Your cart is currently empty</h2>
+      <p class="text-sm text-neutral-500 mt-2 mb-6">Looks like you haven't added any products to your cart yet.</p>
+      <a
+        href="/products"
+        class="h-11 px-6 bg-neutral-900 text-white font-medium text-sm flex items-center justify-center hover:bg-neutral-800 transition-colors"
+      >
+        Continue Shopping
+      </a>
+    </div>
+
+    <!-- Active Cart Content Layout (Initially hidden) -->
+    <div id="cart-page-content" class="hidden grid gap-10 lg:grid-cols-3 items-start">
+      <!-- Line Items Section -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="hidden md:grid grid-cols-12 gap-4 pb-3 border-b border-neutral-200 text-xs font-semibold text-neutral-500 uppercase tracking-wider px-2">
+          <div class="col-span-6">Product</div>
+          <div class="col-span-2 text-center">Price</div>
+          <div class="col-span-2 text-center">Quantity</div>
+          <div class="col-span-2 text-right">Total</div>
+        </div>
+
+        <div id="cart-page-items-list" class="divide-y divide-neutral-200 border-b border-neutral-200">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Order Summary Card -->
+      <div class="bg-neutral-50 border border-neutral-200 p-6 rounded-sm space-y-6">
+        <h2 class="text-base font-bold text-neutral-900">Order Summary</h2>
+
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between text-neutral-600">
+            <span>Subtotal</span>
+            <span id="summary-subtotal">0,00€</span>
+          </div>
+
+          <!-- Dynamic Coupon Discount Rows Container -->
+          <div id="summary-coupons-container" class="space-y-2"></div>
+
+          <div class="flex justify-between text-neutral-600">
+            <span>Taxes</span>
+            <span id="summary-tax">0,00€</span>
+          </div>
+
+          <div class="flex justify-between font-bold text-base text-neutral-900 pt-3 border-t border-neutral-200">
+            <span>Total</span>
+            <span id="summary-total">0,00€</span>
+          </div>
+        </div>
+
+        <!-- Coupon Voucher Promotion Architecture Form -->
+        <div class="pt-4 border-t border-neutral-200 space-y-2">
+          <label for="coupon-input" class="text-xs font-semibold text-neutral-700 block">Have a promo code?</label>
+          <form id="coupon-form" class="flex gap-2">
+            <input
+              type="text"
+              id="coupon-input"
+              required
+              placeholder="Enter coupon"
+              class="flex-1 h-9 bg-white border border-neutral-300 text-sm px-3 focus:outline-none focus:border-neutral-900"
+            />
+            <button
+              type="submit"
+              id="coupon-submit-btn"
+              class="h-9 px-4 bg-neutral-900 text-white font-medium text-xs hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              Apply
+            </button>
+          </form>
+          <p id="coupon-feedback-msg" class="text-xs font-medium hidden"></p>
+        </div>
+
+        <button
+          id="cart-checkout-btn"
+          class="w-full h-12 bg-neutral-900 text-white font-bold text-sm flex items-center justify-center hover:bg-neutral-800 transition-colors pt-1 cursor-pointer"
+        >
+          Proceed to Checkout
+        </button>
+
+        <a
+          href="/products"
+          class="w-full h-12 flex items-center justify-center border border-neutral-900 text-neutral-900 font-medium text-sm hover:bg-neutral-900 hover:text-white transition-colors"
+        >
+          Continue Shopping
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, applyCoupon, removeCoupon } from '../lib/cart';
+  import type { StoreCart } from '../lib/store-api';
+  import { formatStorePrice } from '../lib/price-utils';
+
+  const loadingEl = document.getElementById('cart-page-loading') as HTMLDivElement;
+  const emptyEl = document.getElementById('cart-page-empty') as HTMLDivElement;
+  const contentEl = document.getElementById('cart-page-content') as HTMLDivElement;
+  const itemsList = document.getElementById('cart-page-items-list') as HTMLDivElement;
+  
+  const subtotalEl = document.getElementById('summary-subtotal') as HTMLSpanElement;
+  const couponsContainer = document.getElementById('summary-coupons-container') as HTMLDivElement;
+  const taxEl = document.getElementById('summary-tax') as HTMLSpanElement;
+  const totalEl = document.getElementById('summary-total') as HTMLSpanElement;
+  
+  const couponForm = document.getElementById('coupon-form') as HTMLFormElement;
+  const couponInput = document.getElementById('coupon-input') as HTMLInputElement;
+  const couponSubmitBtn = document.getElementById('coupon-submit-btn') as HTMLButtonElement;
+  const couponFeedback = document.getElementById('coupon-feedback-msg') as HTMLParagraphElement;
+
+  function renderCartPage(cart: StoreCart | null) {
+    loadingEl?.classList.add('hidden');
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      contentEl?.classList.add('hidden');
+      emptyEl?.classList.remove('hidden');
+      return;
+    }
+
+    emptyEl?.classList.add('hidden');
+    contentEl?.classList.remove('hidden');
+
+    const minorUnit = cart.totals.currency_minor_unit ?? 2;
+
+    // Build line items
+    if (itemsList) {
+      itemsList.innerHTML = cart.items.map((item) => {
+        const img = item.images?.[0]?.src || '/placeholder-img.png';
+        const variationsHtml = item.variation && item.variation.length > 0
+          ? `<div class="text-xs text-neutral-500 mt-1 flex flex-wrap gap-x-2">
+               ${item.variation.map(v => `<span><strong>${v.attribute}:</strong> ${v.value}</span>`).join('')}
+             </div>`
+          : '';
+
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 py-6 px-2 items-center cart-page-item-row" data-key="${item.key}">
+            <!-- Product Info Grid Column -->
+            <div class="md:col-span-6 flex gap-4">
+              <img src="${img}" alt="${item.name}" class="w-20 h-20 object-cover bg-neutral-50 border border-neutral-200 rounded-sm flex-shrink-0" />
+              <div class="min-w-0 flex flex-col justify-center">
+                <h3 class="text-sm font-semibold text-neutral-900 truncate">${item.name}</h3>
+                ${variationsHtml}
+                <button class="text-left text-xs font-medium text-neutral-400 hover:text-red-600 transition-colors mt-2 flex items-center gap-1 btn-page-remove cursor-pointer" aria-label="Remove ${item.name}">
+                  Remove item
+                </button>
+              </div>
+            </div>
+
+            <!-- Unit Price -->
+            <div class="md:col-span-2 text-left md:text-center text-sm text-neutral-600">
+              <span class="md:hidden font-medium text-neutral-400 mr-1">Price:</span>
+              ${formatStorePrice(item.prices.price, minorUnit)}
+            </div>
+
+            <!-- Quantity controls -->
+            <div class="md:col-span-2 flex justify-start md:justify-center">
+              <div class="flex items-center border border-neutral-300 rounded-sm bg-white h-8 overflow-hidden">
+                <button class="px-2.5 text-neutral-600 hover:bg-neutral-100 h-full btn-page-minus cursor-pointer" aria-label="Decrease quantity">-</button>
+                <span class="px-2 text-xs font-semibold w-8 text-center page-qty-display">${item.quantity}</span>
+                <button class="px-2.5 text-neutral-600 hover:bg-neutral-100 h-full btn-page-plus cursor-pointer" aria-label="Increase quantity">+</button>
+              </div>
+            </div>
+
+            <!-- Line Total -->
+            <div class="md:col-span-2 text-left md:text-right text-sm font-bold text-neutral-900">
+              <span class="md:hidden font-medium text-neutral-400 mr-1">Total:</span>
+              ${formatStorePrice(item.totals.line_total, minorUnit)}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Set totals summaries
+    if (subtotalEl) subtotalEl.textContent = formatStorePrice(cart.totals.total_items, minorUnit);
+    if (taxEl) taxEl.textContent = formatStorePrice(cart.totals.total_tax, minorUnit);
+    if (totalEl) totalEl.textContent = formatStorePrice(cart.totals.total_price, minorUnit);
+
+    // Handle Coupons block architectural layout
+    if (couponsContainer) {
+      if (cart.coupons && cart.coupons.length > 0) {
+        couponsContainer.innerHTML = cart.coupons.map((coupon) => `
+          <div class="flex justify-between items-center text-emerald-600 text-sm">
+            <div class="flex items-center gap-1.5">
+              <span class="font-medium">Code: ${coupon.code.toUpperCase()}</span>
+              <button class="text-neutral-400 hover:text-red-500 transition-colors text-xs btn-remove-coupon cursor-pointer" data-code="${coupon.code}" aria-label="Remove coupon ${coupon.code}">
+                (Remove)
+              </button>
+            </div>
+            <span>-${formatStorePrice(coupon.totals.total_discount, minorUnit)}</span>
+          </div>
+        `).join('');
+      } else {
+        couponsContainer.innerHTML = '';
+      }
+    }
+
+    bindPageInteractions();
+  }
+
+  function bindPageInteractions() {
+    // Row controls
+    const rows = itemsList?.querySelectorAll('.cart-page-item-row');
+    rows?.forEach((row) => {
+      const key = row.getAttribute('data-key');
+      if (!key) return;
+
+      const displaySpan = row.querySelector('.page-qty-display');
+      const currentQty = parseInt(displaySpan?.textContent || '1', 10);
+
+      row.querySelector('.btn-page-minus')?.addEventListener('click', async () => {
+        if (currentQty <= 1) {
+          await removeFromCart(key);
+        } else {
+          await updateCartQuantity(key, currentQty - 1);
+        }
+      });
+
+      row.querySelector('.btn-page-plus')?.addEventListener('click', async () => {
+        await updateCartQuantity(key, currentQty + 1);
+      });
+
+      row.querySelector('.btn-page-remove')?.addEventListener('click', async () => {
+        await removeFromCart(key);
+      });
+    });
+
+    // Coupon lines controls
+    const couponRemoveBtns = couponsContainer?.querySelectorAll('.btn-remove-coupon');
+    couponRemoveBtns?.forEach((btn) => {
+      const code = btn.getAttribute('data-code');
+      if (!code) return;
+
+      btn.addEventListener('click', async () => {
+        showFeedback('Removing coupon...', 'text-neutral-500');
+        try {
+          await removeCoupon(code);
+          showFeedback('Coupon removed successfully.', 'text-emerald-600');
+        } catch (err: any) {
+          showFeedback(err.message || 'Failed to remove coupon.', 'text-red-600');
+        }
+      });
+    });
+  }
+
+  function showFeedback(msg: string, textClass: string) {
+    if (!couponFeedback) return;
+    couponFeedback.textContent = msg;
+    couponFeedback.className = `text-xs font-medium ${textClass}`;
+  }
+
+  // Setup listeners and forms
+  function initCartPage() {
+    const currentCart = getCachedCart();
+    renderCartPage(currentCart);
+
+    window.addEventListener('cart-updated', ((e: CustomEvent<StoreCart>) => {
+      renderCartPage(e.detail);
+    }) as EventListener);
+
+    // Form voucher Submission Handler
+    couponForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = couponInput?.value.trim();
+      if (!code) return;
+
+      if (couponSubmitBtn) couponSubmitBtn.disabled = true;
+      showFeedback('Applying promo code...', 'text-neutral-500');
+
+      try {
+        await applyCoupon(code);
+        showFeedback('Promo code applied successfully!', 'text-emerald-600');
+        if (couponInput) couponInput.value = '';
+      } catch (err: any) {
+        showFeedback(err.message || 'Invalid promotional coupon code.', 'text-red-600');
+      } finally {
+        if (couponSubmitBtn) couponSubmitBtn.disabled = false;
+      }
+    });
+
+    // Live background verification check
+    syncCart().catch(() => {
+      loadingEl?.classList.add('hidden');
+      if (!getCachedCart() || getCachedCart()?.items.length === 0) {
+        emptyEl?.classList.remove('hidden');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCartPage);
+  } else {
+    initCartPage();
+  }
+</script>

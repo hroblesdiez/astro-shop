@@ -1,0 +1,45 @@
+---
+interface Props {
+  attributes: any[];
+}
+
+const { attributes } = Astro.props;
+---
+
+{
+  attributes.length > 0 && (
+    <div class="mt-8 flex flex-col gap-6">
+
+      {attributes.map((attribute) => (
+
+        <div>
+
+          <label
+            class="block mb-2 text-sm font-medium text-(--color-text-base)"
+          >
+            {attribute.label}
+          </label>
+
+          <select
+            class="variation-select w-full border border-(--color-border) bg-white px-4 py-3"
+            data-attribute={attribute.name}
+          >
+            <option value="">
+              Select {attribute.label}
+            </option>
+
+            {attribute.options.map((option: string) => (
+              <option value={option}>
+                {option.toUpperCase()}
+              </option>
+            ))}
+
+          </select>
+
+        </div>
+
+      ))}
+
+    </div>
+  )
+}

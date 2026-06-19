@@ -1,0 +1,91 @@
+---
+interface Props {
+  min?: number;
+  max?: number;
+  initial?: number;
+}
+
+const { min = 1, max = 999, initial = 1 } = Astro.props;
+---
+
+<div class="flex items-center gap-3 mt-8">
+  <label for="quantity" class="text-sm font-medium text-(--color-text-base)">
+    Quantity:
+  </label>
+
+  <div class="flex items-center border border-(--color-border) bg-white">
+    <button
+      id="quantity-minus"
+      type="button"
+      class="px-3 py-2 text-(--color-text-base) hover:bg-(--color-border) transition-colors"
+      aria-label="Decrease quantity"
+    >
+      −
+    </button>
+
+    <input
+      id="quantity-input"
+      type="number"
+      min={min}
+      max={max}
+      value={initial}
+      class="w-16 text-center border-0 text-(--color-text-base) focus:outline-none focus:ring-2 focus:ring-(--color-btn-cta)"
+    />
+
+    <button
+      id="quantity-plus"
+      type="button"
+      class="px-3 py-2 text-(--color-text-base) hover:bg-(--color-border) transition-colors"
+      aria-label="Increase quantity"
+    >
+      +
+    </button>
+  </div>
+</div>
+
+<script>
+  console.log('[QuantitySelector] Script loading immediately');
+
+  const minusBtn = document.getElementById('quantity-minus');
+  const plusBtn = document.getElementById('quantity-plus');
+  const input = document.getElementById('quantity-input');
+
+  if (!minusBtn || !plusBtn || !input) {
+    console.warn('[QuantitySelector] Elements not found');
+  } else {
+    console.log('[QuantitySelector] Elements found, attaching listeners');
+
+    minusBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('[QuantitySelector] Plus clicked');
+      const current = parseInt(input.value, 10);
+      const minVal = parseInt(input.min, 10);
+      const newValue = Math.max(minVal, current - 1);
+      input.value = newValue.toString();
+      console.log('[QuantitySelector] New value:', newValue);
+      window.dispatchEvent(new CustomEvent('quantity-changed', {
+        detail: { quantity: newValue }
+      }));
+    });
+
+    plusBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('[QuantitySelector] Plus clicked');
+      const current = parseInt(input.value, 10);
+      const maxVal = parseInt(input.max, 10);
+      const newValue = Math.min(maxVal, current + 1);
+      input.value = newValue.toString();
+      console.log('[QuantitySelector] New value:', newValue);
+      window.dispatchEvent(new CustomEvent('quantity-changed', {
+        detail: { quantity: newValue }
+      }));
+    });
+
+    input.addEventListener('change', function() {
+      console.log('[QuantitySelector] Input changed:', this.value);
+      window.dispatchEvent(new CustomEvent('quantity-changed', {
+        detail: { quantity: parseInt(this.value, 10) }
+      }));
+    });
+  }
+</script>

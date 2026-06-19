@@ -1,0 +1,331 @@
+---
+// MiniCart Component
+// Accessible, vanilla JavaScript slide-over drawer driven by the WooCommerce Store API cache
+---
+
+<div
+  id="mini-cart-backdrop"
+  class="fixed inset-0 bg-neutral-900/50 backdrop-blur-xs z-50 opacity-0 pointer-events-none transition-opacity duration-300"
+  aria-hidden="true"
+>
+</div>
+
+<div
+  id="mini-cart-drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="mini-cart-title"
+  class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-50 translate-x-full shadow-2xl transition-transform duration-300 flex flex-col"
+>
+  <!-- Header -->
+  <div class="px-4 h-16 border-b border-neutral-200 flex items-center justify-between">
+    <h2 id="mini-cart-title" class="text-lg font-bold">Shopping Cart</h2>
+    <button
+      id="mini-cart-close"
+      class="p-2 text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"
+      aria-label="Close cart"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Dynamic Content Container -->
+  <div id="mini-cart-items-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="flex flex-col items-center justify-center py-12 text-neutral-500">
+      <p class="text-sm">Loading your cart...</p>
+    </div>
+  </div>
+
+  <!-- Footer Summary -->
+  <div id="mini-cart-footer" class="p-4 border-t border-neutral-200 bg-neutral-50 space-y-4 hidden">
+    <div class="space-y-1.5 text-sm">
+      <div class="flex justify-between text-neutral-600">
+        <span>Subtotal</span>
+        <span id="mini-cart-subtotal">0,00€</span>
+      </div>
+      <!-- Individual applied coupon rows — populated by JS -->
+      <div id="mini-cart-coupons-container" class="space-y-1"></div>
+      <div class="flex justify-between text-neutral-600">
+        <span>Taxes</span>
+        <span id="mini-cart-tax">0,00€</span>
+      </div>
+      <div class="flex justify-between font-bold text-base text-neutral-900 pt-1.5 border-t border-neutral-200">
+        <span>Total</span>
+        <span id="mini-cart-total">0,00€</span>
+      </div>
+    </div>
+
+    <div class="grid gap-2 pt-2">
+      <a
+        href="/cart"
+        class="w-full h-11 bg-white border border-neutral-300 text-neutral-800 font-medium text-sm flex items-center justify-center hover:bg-neutral-50 transition-colors"
+      >
+        View Full Cart
+      </a>
+      <button
+        id="mini-cart-checkout"
+        class="w-full h-11 bg-neutral-900 text-white font-medium text-sm flex items-center justify-center hover:bg-neutral-800 transition-colors cursor-pointer"
+      >
+        Checkout
+      </button>
+      <a
+        href="/products"
+        id="mini-cart-continue"
+        class="w-full h-11 flex items-center justify-center border border-neutral-900 text-neutral-900 font-medium text-sm hover:bg-neutral-900 hover:text-white transition-colors"
+      >
+        Continue Shopping
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, removeCoupon } from '../lib/cart';
+  import type { StoreCart } from '../lib/store-api';
+  import { formatStorePrice } from '../lib/price-utils';
+
+  let lastActiveElement: HTMLElement | null = null;
+
+  const backdrop = document.getElementById('mini-cart-backdrop') as HTMLDivElement;
+  const drawer = document.getElementById('mini-cart-drawer') as HTMLDivElement;
+  const closeBtn = document.getElementById('mini-cart-close') as HTMLButtonElement;
+  const container = document.getElementById('mini-cart-items-container') as HTMLDivElement;
+  const footer = document.getElementById('mini-cart-footer') as HTMLDivElement;
+  
+  const subtotalEl = document.getElementById('mini-cart-subtotal') as HTMLSpanElement;
+  const couponsContainer = document.getElementById('mini-cart-coupons-container') as HTMLDivElement;
+  const taxEl = document.getElementById('mini-cart-tax') as HTMLSpanElement;
+  const totalEl = document.getElementById('mini-cart-total') as HTMLSpanElement;
+
+  // Render cart view synchronously from state object
+  function renderMiniCart(cart: StoreCart | null) {
+    if (!container) return;
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-16 text-center text-neutral-500">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mb-4 text-neutral-300">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+          </svg>
+          <p class="text-base font-medium text-neutral-900">Your cart is empty</p>
+          <p class="text-xs mt-1">Add some items from our store to get started.</p>
+        </div>
+      `;
+      footer?.classList.add('hidden');
+      return;
+    }
+
+    const minorUnit = cart.totals.currency_minor_unit ?? 2;
+
+    // Populate lines
+    container.innerHTML = cart.items.map((item) => {
+      const img = item.images?.[0]?.thumbnail || '/placeholder-thumb.png';
+      const variationsHtml = item.variation && item.variation.length > 0
+        ? `<p class="text-xs text-neutral-500 mt-0.5">${item.variation.map(v => `${v.attribute}: ${v.value}`).join(', ')}</p>`
+        : '';
+
+      return `
+        <div class="flex gap-4 p-3 bg-neutral-50 border border-neutral-100 rounded-sm mini-cart-item-row" data-key="${item.key}">
+          <img src="${img}" alt="${item.name}" class="w-16 h-16 object-cover bg-white border border-neutral-200 rounded-xs flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-medium text-neutral-900 truncate">${item.name}</h3>
+            ${variationsHtml}
+            <div class="flex items-center justify-between mt-2">
+              <!-- Quantity Selector Wrapper -->
+              <div class="flex items-center border border-neutral-300 rounded-sm bg-white overflow-hidden h-7">
+                <button class="px-2 text-neutral-600 hover:bg-neutral-100 h-full btn-qty-minus cursor-pointer" aria-label="Decrease quantity">-</button>
+                <span class="px-2 text-xs font-medium w-7 text-center qty-display">${item.quantity}</span>
+                <button class="px-2 text-neutral-600 hover:bg-neutral-100 h-full btn-qty-plus cursor-pointer" aria-label="Increase quantity">+</button>
+              </div>
+              
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-semibold text-neutral-900">${formatStorePrice(item.totals.line_total, minorUnit)}</span>
+                <button class="text-neutral-400 hover:text-red-600 transition-colors btn-remove cursor-pointer" aria-label="Remove item">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-1.816A2.25 2.25 0 0113.122 1.5H10.89a2.25 2.25 0 01-2.122 1.836V5.79m7.36 0a43.38 43.38 0 00-7.36 0" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Setup subtotal, taxes and totals
+    if (subtotalEl) subtotalEl.textContent = formatStorePrice(cart.totals.total_items, minorUnit);
+    if (taxEl) taxEl.textContent = formatStorePrice(cart.totals.total_tax, minorUnit);
+    if (totalEl) totalEl.textContent = formatStorePrice(cart.totals.total_price, minorUnit);
+
+    // Render individual applied coupon rows
+    if (couponsContainer) {
+      if (cart.coupons && cart.coupons.length > 0) {
+        couponsContainer.innerHTML = cart.coupons.map((coupon) => `
+          <div class="flex justify-between items-center text-emerald-600 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="font-medium">${coupon.code.toUpperCase()}</span>
+              <button
+                class="text-neutral-400 hover:text-red-500 transition-colors btn-mini-remove-coupon cursor-pointer"
+                data-code="${coupon.code}"
+                aria-label="Remove coupon ${coupon.code}"
+              >(Remove)</button>
+            </div>
+            <span>-${formatStorePrice(coupon.totals.total_discount, minorUnit)}</span>
+          </div>
+        `).join('');
+        bindCouponRemoveEvents();
+      } else {
+        couponsContainer.innerHTML = '';
+      }
+    }
+
+    footer?.classList.remove('hidden');
+    bindCartInteractionEvents();
+  }
+
+  // Handle nested line updates avoiding frame-lag
+  function bindCartInteractionEvents() {
+    const rows = container?.querySelectorAll('.mini-cart-item-row');
+    if (!rows) return;
+
+    rows.forEach((row) => {
+      const key = row.getAttribute('data-key');
+      if (!key) return;
+
+      const currentQty = parseInt(row.querySelector('.qty-display')?.textContent || '1', 10);
+
+      row.querySelector('.btn-qty-minus')?.addEventListener('click', async () => {
+        if (currentQty <= 1) {
+          await removeFromCart(key);
+        } else {
+          await updateCartQuantity(key, currentQty - 1);
+        }
+      });
+
+      row.querySelector('.btn-qty-plus')?.addEventListener('click', async () => {
+        await updateCartQuantity(key, currentQty + 1);
+      });
+
+      row.querySelector('.btn-remove')?.addEventListener('click', async () => {
+        await removeFromCart(key);
+      });
+    });
+  }
+
+  // Bind remove buttons on individual coupon rows
+  function bindCouponRemoveEvents() {
+    const btns = couponsContainer?.querySelectorAll('.btn-mini-remove-coupon');
+    btns?.forEach((btn) => {
+      const code = btn.getAttribute('data-code');
+      if (!code) return;
+      btn.addEventListener('click', async () => {
+        try {
+          await removeCoupon(code);
+        } catch (err) {
+          console.error('[MiniCart] Failed to remove coupon:', err);
+        }
+      });
+    });
+  }
+
+  // Drawer Animation Controls
+  function openMiniCart() {
+    lastActiveElement = document.activeElement as HTMLElement;
+    
+    backdrop?.classList.remove('pointer-events-none', 'opacity-0');
+    backdrop?.classList.add('opacity-100');
+    drawer?.classList.remove('translate-x-full');
+    
+    document.body.style.overflow = 'hidden';
+    
+    // Focus close button on animation frame
+    setTimeout(() => {
+      closeBtn?.focus();
+    }, 50);
+
+    document.addEventListener('keydown', handleFocusTrapAndEscape);
+  }
+
+  function closeMiniCart() {
+    backdrop?.classList.add('pointer-events-none', 'opacity-0');
+    backdrop?.classList.remove('opacity-100');
+    drawer?.classList.add('translate-x-full');
+    
+    document.body.style.overflow = '';
+    
+    document.removeEventListener('keydown', handleFocusTrapAndEscape);
+
+    if (lastActiveElement) {
+      lastActiveElement.focus();
+    }
+  }
+
+  // Focus locking + Keyboard shortcut triggers
+  function handleFocusTrapAndEscape(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      closeMiniCart();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusableSelectors = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      const elements = drawer?.querySelectorAll(focusableSelectors);
+      if (!elements || elements.length === 0) return;
+
+      const firstEl = elements[0] as HTMLElement;
+      const lastEl = elements[elements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          lastEl.focus();
+          e.preventDefault();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          firstEl.focus();
+          e.preventDefault();
+        }
+      }
+    }
+  }
+
+  // Boot orchestration
+  function initMiniCart() {
+    // Initial display from local client cache
+    const initialCart = getCachedCart();
+    renderMiniCart(initialCart);
+
+    // Dynamic state channel connection
+    window.addEventListener('cart-updated', ((e: CustomEvent<StoreCart>) => {
+      renderMiniCart(e.detail);
+    }) as EventListener);
+
+    // Global toggle link bounds
+    window.addEventListener('toggle-mini-cart', () => {
+      if (drawer?.classList.contains('translate-x-full')) {
+        openMiniCart();
+      } else {
+        closeMiniCart();
+      }
+    });
+
+    backdrop?.addEventListener('click', closeMiniCart);
+    closeBtn?.addEventListener('click', closeMiniCart);
+
+    // "Continue Shopping" closes drawer before navigating
+    document.getElementById('mini-cart-continue')?.addEventListener('click', () => {
+      closeMiniCart();
+    });
+
+    // Background validation query
+    syncCart().catch(() => {});
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMiniCart);
+  } else {
+    initMiniCart();
+  }
+</script>

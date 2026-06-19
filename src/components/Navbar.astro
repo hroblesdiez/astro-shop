@@ -1,0 +1,89 @@
+---
+import MiniCart from './MiniCart.astro';
+
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/products', label: 'Shop' },
+  { href: '/categories', label: 'Categories' },
+  { href: '/blog', label: 'Blog' },
+];
+---
+
+<header class="border-b border-neutral-200 sticky top-0 bg-white z-50">
+  <nav class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold tracking-tight">ASTRO SHOP</a>
+
+    <ul class="hidden md:flex items-center gap-8">
+      {links.map(({ href, label }) => (
+        <li>
+          <a href={href} class="text-sm text-neutral-600 hover:text-neutral-900 transition-colors">
+            {label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <div class="flex items-center gap-4">
+      <button
+        id="cart-button"
+        class="relative text-sm font-medium hover:text-neutral-600 transition-colors cursor-pointer"
+        aria-label="Open cart"
+      >
+        Cart
+        <span
+          id="cart-count"
+          class="absolute -top-2 -right-4 bg-neutral-900 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold"
+        >
+          0
+        </span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<!-- Global Shell Inclusion of the Slide-over Panel -->
+<MiniCart />
+
+<script>
+  import { getCachedCart } from '../lib/cart';
+  import type { StoreCart } from '../lib/store-api';
+
+  function initNavbarCart() {
+    const cartBtn = document.getElementById('cart-button');
+    const cartCount = document.getElementById('cart-count');
+
+    if (!cartBtn || !cartCount) return;
+
+    // Helper to calculate or pull live quantity summary lines
+    function updateBadgeCount(cart: StoreCart | null) {
+      if (!cartCount) return;
+      if (!cart || !cart.items) {
+        cartCount.textContent = '0';
+        return;
+      }
+
+      // Sum exact product line item quantities returned by the authoritative source
+      const totalQty = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+      cartCount.textContent = totalQty.toString();
+    }
+
+    // Initialize badge from synchronous localStorage UI cache
+    updateBadgeCount(getCachedCart());
+
+    // Listen to global updates
+    window.addEventListener('cart-updated', ((e: CustomEvent<StoreCart>) => {
+      updateBadgeCount(e.detail);
+    }) as EventListener);
+
+    // Click triggers custom event that MiniCart hooks onto
+    cartBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('toggle-mini-cart'));
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNavbarCart);
+  } else {
+    initNavbarCart();
+  }
+</script>

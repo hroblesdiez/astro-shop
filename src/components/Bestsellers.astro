@@ -1,0 +1,44 @@
+---
+import ProductCard from './ProductCard.astro';
+
+interface Props {
+  products: any[];
+}
+
+const { products } = Astro.props;
+---
+
+<section class="py-(--spacing-section) bg-(--color-background)">
+  <div class="max-w-7xl mx-auto px-4">
+
+    <div class="text-center mb-12">
+      <h2 class="font-(--font-heading) text-4xl text-(--color-text-base) mb-3">Bestsellers</h2>
+      <p class="text-(--color-text-muted) text-sm">Our most-loved products, handpicked for you</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      {products.map((product) => (
+        <ProductCard
+          databaseId={product.databaseId}
+          name={product.name}
+          slug={product.slug}
+          price={product.price}
+          regularPrice={product.regularPrice}
+          salePrice={product.salePrice}
+          image={product.image}
+        />
+      ))}
+    </div>
+
+    <div class="text-center mt-12">
+
+      <a  href="/products"
+        class="border border-(--color-btn-cta) text-(--color-btn-cta) px-10 py-3 text-sm font-medium tracking-wide hover:bg-(--color-btn-cta) hover:text-white transition-colors"
+      >
+        View All Products
+      </a>
+    </div>
+
+  </div>
+</section>

@@ -1,0 +1,47 @@
+---
+interface TestimonialField {
+  authorName: string;
+  text: string;
+  rating: number;
+  product: string;
+}
+
+interface Testimonial {
+  title: string;
+  testimonialFields: TestimonialField;
+}
+
+interface Props {
+  testimonials: Testimonial[];
+}
+
+const { testimonials } = Astro.props;
+---
+
+<section class="py-(--spacing-section) bg-(--color-background)">
+  <div class="max-w-7xl mx-auto px-4">
+
+    <div class="text-center mb-12">
+      <h2 class="font-(--font-heading) text-4xl text-(--color-text-base) mb-3">Loved by Our Community</h2>
+      <p class="text-(--color-text-muted) text-sm">Real reviews from real customers</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {testimonials.map(({ testimonialFields }) => (
+        <div class="bg-(--color-surface) border border-(--color-border) p-6 flex flex-col gap-4">
+          <div class="flex gap-0.5">
+            {Array.from({ length: testimonialFields.rating }).map(() => (
+              <span class="text-(--color-btn-cart) text-sm">★</span>
+            ))}
+          </div>
+          <p class="text-(--color-text-muted) text-sm leading-relaxed">"{testimonialFields.text}"</p>
+          <div class="mt-auto">
+            <p class="text-sm font-medium text-(--color-text-base)">{testimonialFields.authorName}</p>
+            <p class="text-xs text-(--color-text-muted)">{testimonialFields.product}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+
+  </div>
+</section>

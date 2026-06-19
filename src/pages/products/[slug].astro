@@ -1,0 +1,338 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProductGallery from '../../components/product/ProductGallery.astro';
+import ProductInfo from '../../components/product/ProductInfo.astro';
+import ProductVariationSelector from '../../components/product/ProductVariationSelector.astro';
+import QuantitySelector from '../../components/product/QuantitySelector.astro';
+import PriceSummary from '../../components/product/PriceSummary.astro';
+import ProductDescription from '../../components/product/ProductDescription.astro';
+import { getProductBySlug } from '../../lib/products';
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/products');
+}
+
+const product = await getProductBySlug(slug);
+
+if (!product) {
+  return Astro.redirect('/products');
+}
+
+const stripHtml = (html: string = '') =>
+  html.replace(/<[^>]*>/g, '').trim();
+
+const variations = product.variations?.nodes ?? [];
+
+const variationData = variations.map((variation: any) => ({
+  id: variation.databaseId,
+  price: variation.price,
+  regularPrice: variation.regularPrice,
+  salePrice: variation.salePrice,
+  stockStatus: variation.stockStatus,
+  image: variation.image?.sourceUrl,
+  attributes: Object.fromEntries(
+    variation.attributes.nodes.map((attr: any) => [
+      attr.name,
+      attr.value,
+    ])
+  ),
+}));
+
+const isVariable = product.attributes?.nodes && product.attributes.nodes.length > 0;
+
+/**
+ * Derive the valid options for each attribute from actual variations.
+ * WPGraphQL's `attribute.options` returns ALL globally registered values for
+ * the taxonomy — not only the values used by this specific product's variations.
+ * By collecting the distinct values that appear in at least one variation we
+ * guarantee the dropdowns match exactly what WooCommerce has configured for
+ * this product.
+ */
+const attributesWithFilteredOptions = isVariable
+  ? (product.attributes.nodes as any[]).map((attr: any) => {
+      // Collect every value for this attribute that appears in at least one variation
+      const usedValues = new Set<string>();
+      for (const v of variationData) {
+        const val = v.attributes[attr.name];
+        if (val !== undefined && val !== null && val !== '') {
+          usedValues.add(val);
+        }
+      }
+
+      // Preserve the original ordering from the global attribute list
+      // (attr.options keeps the order defined in WooCommerce), but only
+      // include values that are actually used by this product's variations.
+      const filteredOptions: string[] =
+        usedValues.size > 0
+          ? (attr.options as string[]).filter((o: string) => usedValues.has(o))
+          : (attr.options as string[]);
+
+      return { ...attr, options: filteredOptions };
+    })
+  : [];
+---
+
+<Layout
+  title={product.name}
+  description={stripHtml(product.shortDescription)}
+  image={product.image?.sourceUrl}
+  type="product"
+>
+  <div class="max-w-7xl mx-auto px-4 py-12">
+
+    <div class="grid gap-12 lg:grid-cols-2">
+
+      <ProductGallery
+        image={product.image}
+      />
+
+      <div>
+
+        <ProductInfo
+          product={product}
+        />
+
+        {isVariable && (
+          <ProductVariationSelector
+            attributes={attributesWithFilteredOptions}
+          />
+        )}
+
+        <QuantitySelector />
+
+        <PriceSummary
+          unitPrice={!isVariable ? product.price : undefined}
+        />
+
+        <button
+          id="add-to-cart"
+          data-product-id={product.databaseId}
+          disabled={isVariable}
+          class={`w-full mt-8 px-8 py-3 text-white font-medium transition-opacity ${
+            isVariable
+              ? 'opacity-50 cursor-not-allowed bg-(--color-btn-cart)'
+              : 'bg-(--color-btn-cart) hover:opacity-90'
+          }`}
+        >
+          Add To Cart
+        </button>
+
+        <a
+          href="/products"
+          class="w-full mt-3 px-8 py-3 font-medium border border-(--color-btn-cart) text-(--color-btn-cart) hover:bg-(--color-btn-cart) hover:text-white transition-colors flex items-center justify-center"
+        >
+          Continue Shopping
+        </a>
+
+        <ProductDescription
+          html={product.shortDescription}
+        />
+
+      </div>
+
+    </div>
+
+  </div>
+
+  {variationData.length > 0 && (
+    <script define:vars={{ variationData }}>
+      function initProductVariations(variationData) {
+        console.log('[ProductVariations] Initializing with', variationData.length, 'variations');
+
+        const selects = document.querySelectorAll('.variation-select');
+        const priceElement = document.getElementById('product-price');
+        const imageElement = document.getElementById('product-image');
+        const stockElement = document.getElementById('product-stock');
+        const addToCartBtn = document.getElementById('add-to-cart');
+
+        if (!priceElement || !selects.length) {
+          console.warn('[ProductVariations] Product elements not found');
+          return;
+        }
+
+        console.log('[ProductVariations] Found', selects.length, 'select elements');
+
+        const selectedAttributes = {};
+
+        function extractNumericValue(price) {
+          if (price === null || price === undefined || price === "") return null;
+          const str = typeof price === "string" ? price : price.toString();
+          const cleaned = str.replace(/[^\d,.-]/g, "").replace(",", ".");
+          const numPrice = parseFloat(cleaned);
+          return isNaN(numPrice) ? null : numPrice;
+        }
+
+        function formatPriceDisplay(price) {
+          const numPrice = extractNumericValue(price);
+          if (numPrice === null) return null;
+          return numPrice.toLocaleString("es-ES", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }) + "€";
+        }
+
+        function getPriceHtml(variation) {
+          const salePrice = formatPriceDisplay(variation.salePrice);
+          const regularPrice = formatPriceDisplay(variation.regularPrice);
+          const basePrice = formatPriceDisplay(variation.price);
+          const currentPrice = salePrice || basePrice;
+
+          if (!currentPrice) {
+            return '<span class="text-(--color-text-muted)">Price on request</span>';
+          }
+
+          if (salePrice && regularPrice && salePrice !== regularPrice) {
+            return `
+              <div class="flex items-center gap-3">
+                <span class="text-(--color-btn-cta)">${currentPrice}</span>
+                <span class="line-through text-sm text-(--color-text-muted)">${regularPrice}</span>
+              </div>
+            `;
+          }
+
+          return `<span class="text-(--color-btn-cta)">${currentPrice}</span>`;
+        }
+
+        function updateVariation() {
+          console.log('[ProductVariations] updateVariation called. Selected attributes:', selectedAttributes);
+
+          const matchingVariation = variationData.find(function(variation) {
+            return Object.entries(selectedAttributes).every(function([key, value]) {
+              return variation.attributes[key] === value;
+            });
+          });
+
+          if (matchingVariation) {
+            console.log('[ProductVariations] Found matching variation:', matchingVariation);
+
+            if (priceElement) {
+              const priceDiv = priceElement.querySelector('#price-simple') || priceElement;
+              priceDiv.innerHTML = getPriceHtml(matchingVariation);
+            }
+
+            if (imageElement && matchingVariation.image) {
+              imageElement.src = matchingVariation.image;
+              imageElement.alt = matchingVariation.attributes ? Object.values(matchingVariation.attributes).join(' ') : '';
+            }
+
+            if (stockElement) {
+              stockElement.textContent = matchingVariation.stockStatus;
+            }
+
+            if (addToCartBtn) {
+              addToCartBtn.dataset.variationId = matchingVariation.id.toString();
+              addToCartBtn.disabled = false;
+              addToCartBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            const displayPrice = formatPriceDisplay(matchingVariation.salePrice) || formatPriceDisplay(matchingVariation.price);
+            console.log('[ProductVariations] Dispatching variation-selected with price:', displayPrice);
+
+            window.dispatchEvent(new CustomEvent('variation-selected', {
+              detail: {
+                variationId: matchingVariation.id,
+                unitPrice: displayPrice,
+              },
+            }));
+          } else {
+            console.log('[ProductVariations] No matching variation found');
+
+            if (addToCartBtn) {
+              addToCartBtn.disabled = true;
+              addToCartBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            window.dispatchEvent(new CustomEvent('variation-selected', {
+              detail: {
+                unitPrice: null,
+              },
+            }));
+          }
+        }
+
+        selects.forEach(function(select) {
+          const attributeName = select.getAttribute('data-attribute');
+          console.log('[ProductVariations] Setting up select for attribute:', attributeName);
+
+          select.addEventListener('change', function(e) {
+            const value = this.value;
+            console.log('[ProductVariations] Select changed -', attributeName, ':', value);
+
+            if (attributeName) {
+              if (value) {
+                selectedAttributes[attributeName] = value;
+              } else {
+                delete selectedAttributes[attributeName];
+              }
+
+              updateVariation();
+            }
+          });
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          initProductVariations(variationData);
+        });
+      } else {
+        initProductVariations(variationData);
+      }
+    </script>
+  )}
+
+  <script>
+    import { addToCart } from '../../lib/cart';
+
+    function initAddToCart() {
+      console.log('[AddToCart] Initializing...');
+
+      const btn = document.getElementById('add-to-cart');
+      if (!btn) {
+        console.warn('[AddToCart] Button not found');
+        return;
+      }
+
+      btn.addEventListener('click', async function() {
+        const productIdAttr = btn.getAttribute('data-product-id');
+        if (!productIdAttr) {
+          console.error('[AddToCart] Product ID not found');
+          return;
+        }
+
+        // Use variationId if present, otherwise default to product databaseId
+        const variationId = btn.dataset.variationId;
+        const targetId = variationId ? parseInt(variationId, 10) : parseInt(productIdAttr, 10);
+        
+        const quantityInput = document.getElementById('quantity-input') as HTMLInputElement | null;
+        const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
+
+        console.log('[AddToCart] Adding to live Store API cart: targetId=' + targetId + ', quantity=' + quantity);
+
+        const oldText = btn.textContent;
+        btn.textContent = 'Adding...';
+        btn.disabled = true;
+
+        try {
+          await addToCart(targetId, quantity);
+          window.dispatchEvent(new CustomEvent('toggle-mini-cart'));
+        } catch (error) {
+          console.error('[AddToCart] Failed adding to cart:', error);
+          alert('Failed to add item to your cart. Please try again.');
+        } finally {
+          btn.textContent = oldText;
+          btn.disabled = false;
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAddToCart);
+    } else {
+      initAddToCart();
+    }
+  </script>
+
+</Layout>

@@ -1,11 +1,22 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Bestsellers from '../components/Bestsellers.astro';
+import CategoryGrid from '../components/CategoryGrid.astro';
+import Testimonials from '../components/Testimonials.astro';
+import { getBestsellers, getTestimonials } from '../lib/products';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const [products, testimonials] = await Promise.all([
+  getBestsellers(4),
+  getTestimonials(),
+]);
+
+console.log('bestsellers:', JSON.stringify(products, null, 2));
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Home">
+  <Hero />
+  <Bestsellers products={products} />
+  <CategoryGrid />
+  <Testimonials testimonials={testimonials} />
 </Layout>

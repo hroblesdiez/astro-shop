@@ -1,0 +1,115 @@
+---
+interface Props {
+  databaseId: number;
+  name: string;
+  slug: string;
+  price: string;
+  regularPrice: string;
+  salePrice: string | null;
+  isVariable?: boolean;
+  image: {
+    sourceUrl: string;
+    altText: string;
+  } | null;
+}
+
+const { name, slug, price, regularPrice, salePrice, image, isVariable = false } = Astro.props;
+---
+
+<article class="group flex flex-col bg-(--color-surface) border border-(--color-border) hover:shadow-md transition-shadow">
+  <a href={`/products/${slug}`} class="overflow-hidden aspect-square bg-(--color-primary)">
+    {image ? (
+      <img
+        src={image.sourceUrl}
+        alt={image.altText || name}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        loading="lazy"
+        width="400"
+        height="400"
+      />
+    ) : (
+      <div class="w-full h-full flex items-center justify-center text-(--color-text-muted) text-sm">
+        No image
+      </div>
+    )}
+  </a>
+
+  <div class="p-4 flex flex-col gap-3 flex-1">
+    <div class="flex flex-col gap-1">
+      <a href={`/products/${slug}`} class="text-sm font-medium text-(--color-text-base) hover:text-(--color-btn-cta) transition-colors line-clamp-2">
+        {name}
+      </a>
+      <div class="flex items-center gap-2">
+        {salePrice ? (
+          <>
+            <span class="text-sm font-semibold text-(--color-btn-cta)">{salePrice}</span>
+            <span class="text-xs text-(--color-text-muted) line-through">{regularPrice}</span>
+          </>
+        ) : (
+          <span class="text-sm font-semibold text-(--color-text-base)">{price}</span>
+        )}
+      </div>
+    </div>
+
+    <button
+      class="mt-auto bg-(--color-btn-cart) text-white text-xs font-medium tracking-wide py-2.5 px-4 hover:opacity-90 transition-opacity cursor-pointer"
+      data-product-id={Astro.props.databaseId}
+      data-product-slug={slug}
+      data-product-name={name}
+      data-product-price={price}
+      data-product-image={image?.sourceUrl}
+      data-is-variable={isVariable ? 'true' : 'false'}
+    >
+      {isVariable ? 'Select options' : 'Add to cart'}
+    </button>
+  </div>
+</article>
+
+<script>
+  import { addToCart } from '../lib/cart';
+
+  function initGlobalAddToCart() {
+    document.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-product-id]:not(#add-to-cart)');
+      if (!btn) return;
+
+      const productIdAttr = btn.getAttribute('data-product-id');
+      if (!productIdAttr) return;
+
+      const productId = parseInt(productIdAttr, 10);
+      if (isNaN(productId)) return;
+
+      e.preventDefault();
+
+      // Variable products require variation selection — redirect to product page.
+      const isVariable = btn.getAttribute('data-is-variable') === 'true';
+      if (isVariable) {
+        const slug = btn.getAttribute('data-product-slug');
+        if (slug) window.location.href = `/products/${slug}`;
+        return;
+      }
+
+      const oldText = btn.textContent;
+      btn.textContent = 'Adding...';
+      (btn as HTMLButtonElement).disabled = true;
+
+      try {
+        await addToCart(productId, 1);
+        window.dispatchEvent(new CustomEvent('toggle-mini-cart'));
+      } catch (error) {
+        console.error('[ProductCard AddToCart] Failed:', error);
+        alert('Failed to add item to your cart. Please try again.');
+      } finally {
+        btn.textContent = oldText;
+        (btn as HTMLButtonElement).disabled = false;
+      }
+    });
+  }
+
+  // Initialize event listener
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGlobalAddToCart);
+  } else {
+    initGlobalAddToCart();
+  }
+</script>

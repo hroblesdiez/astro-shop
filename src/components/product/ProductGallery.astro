@@ -1,0 +1,21 @@
+---
+interface Props {
+  image?: {
+    sourceUrl: string;
+    altText?: string;
+  } | null;
+}
+
+const { image } = Astro.props;
+---
+
+<div>
+  <img
+    id="product-image"
+    src={image?.sourceUrl}
+    alt={image?.altText || ''}
+    class="w-full border border-(--color-border)"
+    width="800"
+    height="800"
+  />
+</div>
