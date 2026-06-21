@@ -1,0 +1,43 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CheckoutForm from '../../components/checkout/CheckoutForm.astro';
+import { storeApi } from '../../lib/store-api';
+
+let cart = null;
+let error = null;
+
+try {
+  const cartToken = Astro.cookies.get('woo_cart_token')?.value;
+  cart = await storeApi.getCart(cartToken);
+
+  if (!cart || !cart.items || cart.items.length === 0) {
+    return Astro.redirect('/cart');
+  }
+} catch (err) {
+  error = 'Failed to load cart. Please try again.';
+  console.error('[Checkout Page] Error:', err);
+}
+---
+
+<Layout
+  title="Checkout"
+  description="Complete your order"
+  type="website"
+>
+  {error ? (
+    <div class="max-w-7xl mx-auto px-4 py-12">
+      <div class="p-6 bg-[var(--color-surface)] border border-red-200 rounded-[var(--radius-lg)]">
+        <h1 class="font-heading text-2xl text-red-900 mb-2">Checkout Error</h1>
+        <p class="text-red-700">{error}</p>
+        <a
+          href="/cart"
+          class="mt-4 inline-block px-6 py-2.5 bg-[var(--color-btn-cart)] text-white font-medium rounded-[var(--radius-md)] hover:brightness-95 active:brightness-90 transition-all duration-200"
+        >
+          Back to Cart
+        </a>
+      </div>
+    </div>
+  ) : cart ? (
+    <CheckoutForm cart={cart} />
+  ) : null}
+</Layout>

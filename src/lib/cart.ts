@@ -1,10 +1,10 @@
-import { storeApi, type StoreCart } from './store-api';
+import { storeApi, type StoreCart, type VariationAttribute } from "./store-api";
 
-const CART_CACHE_KEY = 'woo_cart_data';
+const CART_CACHE_KEY = "woo_cart_data";
 
 // Synchronously retrieve cached cart data from localStorage for fast initial render
 export const getCachedCart = (): StoreCart | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   try {
     const data = localStorage.getItem(CART_CACHE_KEY);
     return data ? JSON.parse(data) : null;
@@ -15,18 +15,18 @@ export const getCachedCart = (): StoreCart | null => {
 
 // Update the local storage UI cache
 export const saveCachedCart = (cartData: StoreCart): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(CART_CACHE_KEY, JSON.stringify(cartData));
   } catch (error) {
-    console.error('Failed to cache cart data:', error);
+    console.error("Failed to cache cart data:", error);
   }
 };
 
 // Dispatch a custom event to notify all UI islands/components of a cart state update
 export const dispatchCartEvent = (cartData: StoreCart): void => {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('cart-updated', { detail: cartData }));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("cart-updated", { detail: cartData }));
   }
 };
 
@@ -35,18 +35,34 @@ export const syncCart = async (): Promise<StoreCart> => {
   try {
     const cartData = await storeApi.getCart();
     saveCachedCart(cartData);
+
+    const token = localStorage.getItem("woo_cart_token");
+    if (token) {
+      document.cookie = [
+        `woo_cart_token=${token}`,
+        "Path=/",
+        "Max-Age=31536000",
+        "SameSite=Lax",
+      ].join("; ");
+    }
+
     dispatchCartEvent(cartData);
     return cartData;
   } catch (error) {
-    console.error('Failed to synchronize cart with server:', error);
+    console.error("Failed to synchronize cart with server:", error);
     throw error;
   }
 };
 
 // Add product/variation to live WooCommerce cart
-export const addToCart = async (id: number, quantity: number = 1): Promise<StoreCart> => {
+// For variable products, pass variation attributes to specify the exact variant
+export const addToCart = async (
+  id: number,
+  quantity: number = 1,
+  variation?: VariationAttribute[],
+): Promise<StoreCart> => {
   try {
-    const cartData = await storeApi.addItem(id, quantity);
+    const cartData = await storeApi.addItem(id, quantity, variation);
     saveCachedCart(cartData);
     dispatchCartEvent(cartData);
     return cartData;
@@ -57,7 +73,10 @@ export const addToCart = async (id: number, quantity: number = 1): Promise<Store
 };
 
 // Update existing line item quantity using its unique Store API line key
-export const updateCartQuantity = async (key: string, quantity: number): Promise<StoreCart> => {
+export const updateCartQuantity = async (
+  key: string,
+  quantity: number,
+): Promise<StoreCart> => {
   try {
     const cartData = await storeApi.updateItem(key, quantity);
     saveCachedCart(cartData);
@@ -105,5 +124,14 @@ export const removeCoupon = async (code: string): Promise<StoreCart> => {
   } catch (error) {
     console.error(`Failed to remove coupon ${code}:`, error);
     throw error;
+  }
+};
+
+export const clearCartCache = (): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CART_CACHE_KEY);
+  } catch (error) {
+    console.error("Failed to clear cart cache:", error);
   }
 };

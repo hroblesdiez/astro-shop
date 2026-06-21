@@ -31,6 +31,7 @@ const variationData = variations.map((variation: any) => ({
   regularPrice: variation.regularPrice,
   salePrice: variation.salePrice,
   stockStatus: variation.stockStatus,
+  is_in_stock: variation.stockStatus === 'IN_STOCK',
   image: variation.image?.sourceUrl,
   attributes: Object.fromEntries(
     variation.attributes.nodes.map((attr: any) => [
@@ -72,6 +73,9 @@ const attributesWithFilteredOptions = isVariable
       return { ...attr, options: filteredOptions };
     })
   : [];
+
+// GraphQL devuelve stockStatus en mayúsculas: 'IN_STOCK' o 'OUT_OF_STOCK'
+const productIsInStock = product.stockStatus === 'IN_STOCK';
 ---
 
 <Layout
@@ -109,14 +113,14 @@ const attributesWithFilteredOptions = isVariable
         <button
           id="add-to-cart"
           data-product-id={product.databaseId}
-          disabled={isVariable}
+          disabled={isVariable || !productIsInStock}
           class={`w-full mt-8 px-8 py-3 text-white font-medium transition-opacity ${
-            isVariable
+            isVariable || !productIsInStock
               ? 'opacity-50 cursor-not-allowed bg-(--color-btn-cart)'
               : 'bg-(--color-btn-cart) hover:opacity-90'
           }`}
         >
-          Add To Cart
+          {!productIsInStock ? 'Out of Stock' : 'Add To Cart'}
         </button>
 
         <a
@@ -137,8 +141,8 @@ const attributesWithFilteredOptions = isVariable
   </div>
 
   {variationData.length > 0 && (
-    <script define:vars={{ variationData }}>
-      function initProductVariations(variationData) {
+    <script define:vars={{ variationData, attributesWithFilteredOptions }}>
+      function initProductVariations(variationData, attributesWithFilteredOptions) {
         console.log('[ProductVariations] Initializing with', variationData.length, 'variations');
 
         const selects = document.querySelectorAll('.variation-select');
@@ -198,8 +202,8 @@ const attributesWithFilteredOptions = isVariable
         function updateVariation() {
           console.log('[ProductVariations] updateVariation called. Selected attributes:', selectedAttributes);
 
-          const matchingVariation = variationData.find(function(variation) {
-            return Object.entries(selectedAttributes).every(function([key, value]) {
+          const matchingVariation = variationData.find((variation) => {
+            return Object.entries(selectedAttributes).every(([key, value]) => {
               return variation.attributes[key] === value;
             });
           });
@@ -214,17 +218,40 @@ const attributesWithFilteredOptions = isVariable
 
             if (imageElement && matchingVariation.image) {
               imageElement.src = matchingVariation.image;
-              imageElement.alt = matchingVariation.attributes ? Object.values(matchingVariation.attributes).join(' ') : '';
+              imageElement.alt = Object.values(matchingVariation.attributes).join(' ');
             }
 
             if (stockElement) {
-              stockElement.textContent = matchingVariation.stockStatus;
+              const isInStock = matchingVariation.is_in_stock === true;
+              stockElement.textContent = isInStock ? 'In Stock' : 'Out of Stock';
+              stockElement.className = isInStock ? 'text-green-600' : 'text-red-600';
             }
 
             if (addToCartBtn) {
+              const isInStock = matchingVariation.is_in_stock === true;
               addToCartBtn.dataset.variationId = matchingVariation.id.toString();
-              addToCartBtn.disabled = false;
-              addToCartBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+              addToCartBtn.dataset.isInStock = isInStock ? 'true' : 'false';
+              
+              // Construir array de atributos seleccionados
+              const selectedAttrsArray = attributesWithFilteredOptions
+                .map((attr) => ({
+                  attribute: attr.name,
+                  value: selectedAttributes[attr.name] || ''
+                }))
+                .filter((item) => item.value && item.value.trim() !== '');
+              
+              addToCartBtn.dataset.selectedAttributes = JSON.stringify(selectedAttrsArray);
+              console.log('[ProductVariations] Saved selected attributes:', selectedAttrsArray);
+              
+              if (isInStock) {
+                addToCartBtn.disabled = false;
+                addToCartBtn.textContent = 'Add To Cart';
+                addToCartBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+              } else {
+                addToCartBtn.disabled = true;
+                addToCartBtn.textContent = 'Out of Stock';
+                addToCartBtn.classList.add('opacity-50', 'cursor-not-allowed');
+              }
             }
 
             const displayPrice = formatPriceDisplay(matchingVariation.salePrice) || formatPriceDisplay(matchingVariation.price);
@@ -241,7 +268,9 @@ const attributesWithFilteredOptions = isVariable
 
             if (addToCartBtn) {
               addToCartBtn.disabled = true;
+              addToCartBtn.textContent = 'Select Options';
               addToCartBtn.classList.add('opacity-50', 'cursor-not-allowed');
+              addToCartBtn.dataset.selectedAttributes = JSON.stringify([]);
             }
 
             window.dispatchEvent(new CustomEvent('variation-selected', {
@@ -252,7 +281,7 @@ const attributesWithFilteredOptions = isVariable
           }
         }
 
-        selects.forEach(function(select) {
+        selects.forEach((select) => {
           const attributeName = select.getAttribute('data-attribute');
           console.log('[ProductVariations] Setting up select for attribute:', attributeName);
 
@@ -275,17 +304,15 @@ const attributesWithFilteredOptions = isVariable
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-          initProductVariations(variationData);
+          initProductVariations(variationData, attributesWithFilteredOptions);
         });
       } else {
-        initProductVariations(variationData);
+        initProductVariations(variationData, attributesWithFilteredOptions);
       }
     </script>
   )}
 
   <script>
-    import { addToCart } from '../../lib/cart';
-
     function initAddToCart() {
       console.log('[AddToCart] Initializing...');
 
@@ -296,27 +323,49 @@ const attributesWithFilteredOptions = isVariable
       }
 
       btn.addEventListener('click', async function() {
+        // Check if button is disabled (out of stock or variable without selection)
+        if (btn.disabled) {
+          console.warn('[AddToCart] Button is disabled');
+          return;
+        }
+
         const productIdAttr = btn.getAttribute('data-product-id');
         if (!productIdAttr) {
           console.error('[AddToCart] Product ID not found');
           return;
         }
 
-        // Use variationId if present, otherwise default to product databaseId
+        // Use variationId if present (for variable products), otherwise use product databaseId
         const variationId = btn.dataset.variationId;
         const targetId = variationId ? parseInt(variationId, 10) : parseInt(productIdAttr, 10);
         
-        const quantityInput = document.getElementById('quantity-input') as HTMLInputElement | null;
+        const quantityInput = document.getElementById('quantity-input');
         const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
 
-        console.log('[AddToCart] Adding to live Store API cart: targetId=' + targetId + ', quantity=' + quantity);
+        // Get selected attributes for variable products
+        let variation = undefined;
+        const selectedAttrsJson = btn.dataset.selectedAttributes;
+        if (selectedAttrsJson) {
+          try {
+            variation = JSON.parse(selectedAttrsJson);
+            // Filter out empty values
+            variation = variation.filter((item) => item.value && item.value.trim() !== '');
+          } catch (e) {
+            console.warn('[AddToCart] Failed to parse selected attributes:', e);
+            variation = undefined;
+          }
+        }
+
+        console.log('[AddToCart] Adding to live Store API cart: targetId=' + targetId + ', quantity=' + quantity, 'variation=', variation);
 
         const oldText = btn.textContent;
         btn.textContent = 'Adding...';
         btn.disabled = true;
 
         try {
-          await addToCart(targetId, quantity);
+          // Importar dinámicamente el módulo de cart
+          const { addToCart } = await import('../../lib/cart.ts');
+          await addToCart(targetId, quantity, variation);
           window.dispatchEvent(new CustomEvent('toggle-mini-cart'));
         } catch (error) {
           console.error('[AddToCart] Failed adding to cart:', error);

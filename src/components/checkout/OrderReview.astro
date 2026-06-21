@@ -1,0 +1,105 @@
+---
+import type { StoreCart } from '../lib/store-api';
+
+export interface Props {
+  cart: StoreCart;
+}
+
+const { cart } = Astro.props;
+
+// WooCommerce Store API devuelve los precios como enteros escalados por
+// 10^currency_minor_unit (ej. "1082" + minor_unit 2 === 10.82). Si no se
+// divide, "10,82 zł" se muestra erróneamente como "1082,00 zł".
+const minorUnit = Number((cart.totals as any)?.currency_minor_unit ?? 2);
+const currencyCode = (cart.totals as any)?.currency_code || 'PLN';
+
+const formatPrice = (price: string | number): string => {
+  const raw = typeof price === 'string' ? parseFloat(price) : price;
+  const value = raw / Math.pow(10, minorUnit);
+  return new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(value);
+};
+---
+
+<div class="order-review">
+  <div class="bg-[var(--color-primary)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6">
+    <h2 class="font-heading text-xl text-[var(--color-text-base)] mb-6 pb-4 border-b border-[var(--color-border)]">
+      Order Summary
+    </h2>
+
+    <div class="space-y-4 mb-6 pb-6 border-b border-[var(--color-border)]">
+      {cart.items.map(item => (
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <p class="font-medium text-sm text-[var(--color-text-base)]">{item.name}</p>
+            <p class="text-xs text-[var(--color-text-muted)] mt-1">Qty: {item.quantity}</p>
+            {item.variation && item.variation.length > 0 && (
+              <div class="text-xs text-[var(--color-text-muted)] mt-1">
+                {item.variation.map(v => (
+                  <p key={v.attribute}>
+                    {v.attribute}: {v.value}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <p class="font-medium text-sm text-[var(--color-text-base)] ml-4 whitespace-nowrap">
+            {formatPrice(item.totals.line_total)}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    <div class="space-y-3 mb-6 pb-6 border-b border-[var(--color-border)]">
+      <div class="flex justify-between text-sm">
+        <span class="text-[var(--color-text-muted)]">Subtotal</span>
+        <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_price)}</span>
+      </div>
+
+      {cart.coupons && cart.coupons.length > 0 && (
+        <div class="flex justify-between text-sm text-green-700">
+          <span>Discount ({cart.coupons.map(c => c.code).join(', ')})</span>
+          <span>-{formatPrice(cart.totals.total_discount)}</span>
+        </div>
+      )}
+
+      {parseFloat(cart.totals.total_tax) > 0 && (
+        <div class="flex justify-between text-sm">
+          <span class="text-[var(--color-text-muted)]">Tax</span>
+          <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_tax)}</span>
+        </div>
+      )}
+
+      {cart.needs_shipping && (
+        <div class="flex justify-between text-sm">
+          <span class="text-[var(--color-text-muted)]">Shipping</span>
+          {parseFloat(cart.totals.total_shipping) > 0 ? (
+            <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_shipping)}</span>
+          ) : (
+            <span class="text-amber-700">Not calculated yet</span>
+          )}
+        </div>
+      )}
+    </div>
+
+    <div class="flex justify-between items-baseline">
+      <span class="font-heading text-lg text-[var(--color-text-base)]">Total</span>
+      <span class="font-heading text-2xl text-[var(--color-text-base)]">
+        {formatPrice(cart.totals.total_price)}
+      </span>
+    </div>
+
+    {cart.errors && cart.errors.length > 0 && (
+      <div class="mt-6 p-4 bg-red-50 border border-red-200 rounded-[var(--radius-md)]">
+        <p class="text-sm font-medium text-red-800 mb-2">Errors:</p>
+        <ul class="text-sm text-red-700 space-y-1">
+          {cart.errors.map((error, idx) => (
+            <li key={idx}>• {error.message || 'An error occurred'}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+</div>

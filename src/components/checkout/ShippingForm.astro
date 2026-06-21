@@ -1,0 +1,279 @@
+---
+import { COUNTRY_STATES, countryRequiresState } from '../../lib/country-states';
+
+export interface Props {
+  initialData?: {
+    firstName?: string;
+    lastName?: string;
+    country?: string;
+    state?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    postcode?: string;
+  };
+  errors?: Record<string, string>;
+}
+
+const { initialData = {}, errors = {} } = Astro.props;
+const countries = ['PL', 'DE', 'FR', 'GB', 'IT', 'ES'];
+const selectedCountry = initialData.country || 'PL';
+
+const inputClass =
+  'w-full px-3 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-sm)] ' +
+  'text-sm text-[var(--color-text-base)] placeholder:text-[var(--color-text-muted)] ' +
+  'focus:outline-none focus:ring-2 focus:ring-[var(--color-btn-cta)] focus:border-[var(--color-btn-cta)] ' +
+  'transition-colors aria-invalid:border-red-500 aria-invalid:focus:ring-red-300';
+
+const labelClass = 'block text-sm font-medium text-[var(--color-text-base)] mb-1.5';
+const errorClass = 'text-xs text-red-600 mt-1.5';
+---
+
+<div
+  class="shipping-form bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8"
+  data-form="shipping"
+  data-country-states={JSON.stringify(COUNTRY_STATES)}
+>
+  <fieldset>
+    <legend class="font-heading text-xl text-[var(--color-text-base)] mb-6 pb-4 border-b border-[var(--color-border)] w-full">
+      Shipping Address
+    </legend>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="shipping-firstName" class={labelClass}>
+          First Name
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="shipping-firstName"
+          name="shipping.firstName"
+          value={initialData.firstName || ''}
+          required
+          aria-invalid={!!errors['shipping.firstName']}
+          aria-describedby={errors['shipping.firstName'] ? 'shipping-firstName-error' : undefined}
+          class={inputClass}
+        />
+        {errors['shipping.firstName'] && (
+          <p id="shipping-firstName-error" class={errorClass}>
+            {errors['shipping.firstName']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="shipping-lastName" class={labelClass}>
+          Last Name
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="shipping-lastName"
+          name="shipping.lastName"
+          value={initialData.lastName || ''}
+          required
+          aria-invalid={!!errors['shipping.lastName']}
+          aria-describedby={errors['shipping.lastName'] ? 'shipping-lastName-error' : undefined}
+          class={inputClass}
+        />
+        {errors['shipping.lastName'] && (
+          <p id="shipping-lastName-error" class={errorClass}>
+            {errors['shipping.lastName']}
+          </p>
+        )}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="shipping-country" class={labelClass}>
+          Country
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <select
+          id="shipping-country"
+          name="shipping.country"
+          required
+          aria-invalid={!!errors['shipping.country']}
+          aria-describedby={errors['shipping.country'] ? 'shipping-country-error' : undefined}
+          class={inputClass}
+        >
+          {countries.map(code => (
+            <option value={code} selected={selectedCountry === code}>
+              {code}
+            </option>
+          ))}
+        </select>
+        {errors['shipping.country'] && (
+          <p id="shipping-country-error" class={errorClass}>
+            {errors['shipping.country']}
+          </p>
+        )}
+      </div>
+
+      <div id="shipping-state-wrapper" style={countryRequiresState(selectedCountry) ? '' : 'display:none'}>
+        <label for="shipping-state" class={labelClass}>
+          Province / State
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <select
+          id="shipping-state"
+          name="shipping.state"
+          aria-invalid={!!errors['shipping.state']}
+          aria-describedby={errors['shipping.state'] ? 'shipping-state-error' : undefined}
+          class={inputClass}
+        >
+          <option value="">Select…</option>
+          {(COUNTRY_STATES[selectedCountry] || []).map(s => (
+            <option value={s.code} selected={initialData.state === s.code}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        {errors['shipping.state'] && (
+          <p id="shipping-state-error" class={errorClass}>
+            {errors['shipping.state']}
+          </p>
+        )}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="shipping-address1" class={labelClass}>
+          Address Line 1
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="shipping-address1"
+          name="shipping.address1"
+          value={initialData.address1 || ''}
+          required
+          aria-invalid={!!errors['shipping.address1']}
+          aria-describedby={errors['shipping.address1'] ? 'shipping-address1-error' : undefined}
+          class={inputClass}
+        />
+        {errors['shipping.address1'] && (
+          <p id="shipping-address1-error" class={errorClass}>
+            {errors['shipping.address1']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="shipping-address2" class={labelClass}>
+          Address Line 2 (Optional)
+        </label>
+        <input
+          type="text"
+          id="shipping-address2"
+          name="shipping.address2"
+          value={initialData.address2 || ''}
+          class={inputClass}
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label for="shipping-city" class={labelClass}>
+          City
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="shipping-city"
+          name="shipping.city"
+          value={initialData.city || ''}
+          required
+          aria-invalid={!!errors['shipping.city']}
+          aria-describedby={errors['shipping.city'] ? 'shipping-city-error' : undefined}
+          class={inputClass}
+        />
+        {errors['shipping.city'] && (
+          <p id="shipping-city-error" class={errorClass}>
+            {errors['shipping.city']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="shipping-postcode" class={labelClass}>
+          Postal Code
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="shipping-postcode"
+          name="shipping.postcode"
+          value={initialData.postcode || ''}
+          placeholder="XX-XXX"
+          required
+          aria-invalid={!!errors['shipping.postcode']}
+          aria-describedby={errors['shipping.postcode'] ? 'shipping-postcode-error' : undefined}
+          class={inputClass}
+        />
+        {errors['shipping.postcode'] && (
+          <p id="shipping-postcode-error" class={errorClass}>
+            {errors['shipping.postcode']}
+          </p>
+        )}
+      </div>
+    </div>
+  </fieldset>
+</div>
+
+<script>
+  // Toggles and repopulates the Province/State select when the country changes.
+  function initShippingStateToggle() {
+    const wrapper = document.querySelector('[data-form="shipping"]') as HTMLElement | null;
+    if (!wrapper) return;
+
+    const countrySelect = document.getElementById('shipping-country') as HTMLSelectElement | null;
+    const stateWrapper = document.getElementById('shipping-state-wrapper') as HTMLElement | null;
+    const stateSelect = document.getElementById('shipping-state') as HTMLSelectElement | null;
+
+    if (!countrySelect || !stateWrapper || !stateSelect) return;
+
+    let countryStates: Record<string, Array<{ code: string; name: string }>> = {};
+    try {
+      countryStates = JSON.parse(wrapper.dataset.countryStates || '{}');
+    } catch {
+      countryStates = {};
+    }
+
+    const updateStateField = (countryCode: string, preserveValue?: string) => {
+      const states = countryStates[countryCode] || [];
+
+      if (states.length === 0) {
+        stateWrapper.style.display = 'none';
+        stateSelect.innerHTML = '';
+        stateSelect.value = '';
+        return;
+      }
+
+      stateWrapper.style.display = '';
+      stateSelect.innerHTML =
+        '<option value="">Select…</option>' +
+        states
+          .map(s => `<option value="${s.code}">${s.name}</option>`)
+          .join('');
+
+      if (preserveValue && states.some(s => s.code === preserveValue)) {
+        stateSelect.value = preserveValue;
+      }
+    };
+
+    countrySelect.addEventListener('change', () => {
+      updateStateField(countrySelect.value);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initShippingStateToggle);
+  } else {
+    initShippingStateToggle();
+  }
+</script>

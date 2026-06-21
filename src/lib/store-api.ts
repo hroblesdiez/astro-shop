@@ -3,7 +3,7 @@
 
 export interface StoreCartItem {
   key: string;
-  id: number; // Product ID or Variation ID
+  id: number;
   quantity: number;
   name: string;
   summary: string;
@@ -112,115 +112,329 @@ export interface StoreCart {
   errors: any[];
 }
 
-const CART_TOKEN_KEY = 'woo_cart_token';
-const CART_NONCE_KEY = 'woo_cart_nonce';
+export interface StoreCheckoutResponse {
+  order_id: number;
+  order_key: string;
+  status: string;
+  customer_note: string;
+  customer_id: number;
+  billing_address: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    country: string;
+    state: string;
+    address_1: string;
+    address_2: string;
+    city: string;
+    postcode: string;
+  };
+  shipping_address: {
+    first_name: string;
+    last_name: string;
+    country: string;
+    state: string;
+    address_1: string;
+    address_2: string;
+    city: string;
+    postcode: string;
+  };
+  payment_method: string;
+  payment_method_title: string;
+  totals: StoreCartTotals;
+}
 
-// Generate or retrieve a persistent client-side UUID cart token
+export interface CustomerData {
+  billing_address?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    country: string;
+    state?: string;
+    address_1: string;
+    address_2?: string;
+    city: string;
+    postcode: string;
+  };
+  shipping_address?: {
+    first_name: string;
+    last_name: string;
+    country: string;
+    state?: string;
+    address_1: string;
+    address_2?: string;
+    city: string;
+    postcode: string;
+  };
+}
+
+export interface CheckoutPayload extends CustomerData {
+  order_notes?: string;
+  payment_method?: string;
+  payment_method_title?: string;
+}
+
+export interface VariationAttribute {
+  attribute: string;
+  value: string;
+}
+
+const CART_TOKEN_KEY = "woo_cart_token";
+const CART_NONCE_KEY = "woo_cart_nonce";
+
 function getOrCreateCartToken(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   let token = localStorage.getItem(CART_TOKEN_KEY);
   if (!token) {
     token = crypto.randomUUID();
-    localStorage.setItem(CART_TOKEN_KEY, token);
+    persistCartToken(token);
   }
   return token;
 }
 
-// Dynamically construct base REST Store API endpoint from public GraphQL endpoint via same-origin proxy
 function getStoreApiUrl(): string {
-  if (typeof window === 'undefined') {
-    const graphqlUrl = import.meta.env.PUBLIC_GRAPHQL_URL || 'http://localhost:8080/graphql';
-    const baseUrl = graphqlUrl.replace(/\/graphql$/, '');
+  if (typeof window === "undefined") {
+    const graphqlUrl =
+      import.meta.env.PUBLIC_GRAPHQL_URL || "http://localhost:8080/graphql";
+    const baseUrl = graphqlUrl.replace(/\/graphql$/, "");
     return `${baseUrl}/wp-json/wc/store/v1/cart`;
   }
-  // Client-side utilizes same-origin proxy path to circumvent CORS restrictions completely
-  return '/api/cart';
+  return "/api/cart";
 }
 
-// Generic helper to execute Store API requests with appropriate headers
-async function requestStoreApi(method: string, endpointSuffix: string = '', body?: any): Promise<StoreCart> {
-  const baseUrl = getStoreApiUrl();
+function getCheckoutApiUrl(): string {
+  if (typeof window === "undefined") {
+    const graphqlUrl =
+      import.meta.env.PUBLIC_GRAPHQL_URL || "http://localhost:8080/graphql";
+    return (
+      graphqlUrl.replace(/\/graphql$/, "") + "/wp-json/wc/store/v1/checkout"
+    );
+  }
+  return "/api/checkout";
+}
+
+async function requestStoreApi(
+  method: string,
+  endpointSuffix: string = "",
+  body?: any,
+  cartToken?: string,
+  baseUrlOverride?: string,
+): Promise<any> {
+  const baseUrl = baseUrlOverride ?? getStoreApiUrl();
   const url = `${baseUrl}${endpointSuffix}`;
-    
-  const token = getOrCreateCartToken();
-  
+
+  const token = cartToken ?? getOrCreateCartToken();
+
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'Cart-Token': token,
+    Accept: "application/json",
+    "Cart-Token": token,
   };
 
-  // Inject cached Nonce header from localStorage if available (critical for mutations)
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     const nonce = localStorage.getItem(CART_NONCE_KEY);
     if (nonce) {
-      headers['X-WC-Store-API-Nonce'] = nonce;
-      headers['Nonce'] = nonce;
+      headers["X-WC-Store-API-Nonce"] = nonce;
+      headers["Nonce"] = nonce;
     }
   }
 
   if (body) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
-  const options: RequestInit = {
-    method,
-    headers,
-  };
+  const options: RequestInit = { method, headers };
+  if (body) options.body = JSON.stringify(body);
 
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
+  console.log(`[StoreAPI Request] ${method} ${url}`, body ? { body } : "");
 
-  console.log(`[StoreAPI Request] ${method} ${url}`, body ? { body } : '');
-  
   try {
     const response = await fetch(url, options);
-    
-    // Save fresh Nonce from response headers to stay securely synced
-    const freshNonce = response.headers.get('Nonce') || response.headers.get('X-WC-Store-API-Nonce');
-    if (freshNonce && typeof window !== 'undefined') {
-      console.log('[StoreAPI] Captured fresh Nonce:', freshNonce);
+
+    const freshNonce =
+      response.headers.get("Nonce") ||
+      response.headers.get("X-WC-Store-API-Nonce");
+    if (freshNonce && typeof window !== "undefined") {
+      console.log("[StoreAPI] Captured fresh Nonce:", freshNonce);
       localStorage.setItem(CART_NONCE_KEY, freshNonce);
     }
 
-    // Save fresh Cart-Token from response headers to stay securely synced
-    const freshCartToken = response.headers.get('Cart-Token');
-    if (freshCartToken && typeof window !== 'undefined') {
-      console.log('[StoreAPI] Captured fresh Cart-Token:', freshCartToken);
+    const freshCartToken = response.headers.get("Cart-Token");
+    if (freshCartToken && typeof window !== "undefined") {
+      console.log("[StoreAPI] Captured fresh Cart-Token:", freshCartToken);
       localStorage.setItem(CART_TOKEN_KEY, freshCartToken);
     }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('[StoreAPI Error Response]', response.status, errorData);
-      const message = errorData.message || `Store API request failed with status ${response.status}`;
+      console.error("[StoreAPI Error Response]", response.status, errorData);
+      const message =
+        errorData.message ||
+        `Store API request failed with status ${response.status}`;
       throw new Error(message);
     }
 
     const data = await response.json();
-    console.log('[StoreAPI Success Response]', data);
+    console.log("[StoreAPI Success Response]", data);
     return data;
   } catch (error) {
-    console.error('[StoreAPI Network/Fetch Exception]', error);
+    console.error("[StoreAPI Network/Fetch Exception]", error);
+    throw error;
+  }
+}
+
+export interface OrderLineItem {
+  id: number;
+  quantity: number;
+  name: string;
+  total: string;
+  total_tax: string;
+  images: Array<{
+    id: number;
+    src: string;
+    thumbnail: string;
+    name: string;
+    alt: string;
+  }>;
+  price: string;
+  currency: string;
+  sku?: string;
+  variation?: Array<{
+    attribute: string;
+    value: string;
+  }>;
+}
+
+export interface OrderCoupon {
+  code: string;
+  total_discount: string;
+  total_discount_tax: string;
+}
+
+export interface OrderResponse {
+  id: number;
+  order_number: number;
+  order_key: string;
+  status: string;
+  date_created: string;
+  date_modified: string;
+  billing_address: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    country: string;
+    state: string;
+    address_1: string;
+    address_2: string;
+    city: string;
+    postcode: string;
+  };
+  shipping_address: {
+    first_name: string;
+    last_name: string;
+    country: string;
+    state: string;
+    address_1: string;
+    address_2: string;
+    city: string;
+    postcode: string;
+  };
+  line_items: OrderLineItem[];
+  coupon_lines: OrderCoupon[];
+  totals: StoreCartTotals;
+  customer_note?: string;
+  payment_method: string;
+  payment_method_title: string;
+}
+
+async function requestOrderApi(
+  orderId: number,
+  orderKey: string,
+  billingEmail: string,
+): Promise<OrderResponse> {
+  const graphqlUrl =
+    import.meta.env.PUBLIC_GRAPHQL_URL || "http://localhost:8080/graphql";
+  const baseUrl = graphqlUrl.replace(/\/graphql$/, "");
+  const url = `${baseUrl}/wp-json/wc/store/v1/order/${orderId}?key=${orderKey}&billing_email=${encodeURIComponent(billingEmail)}`;
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  console.log(`[OrderAPI Request] GET ${url}`);
+
+  try {
+    const response = await fetch(url, { method: "GET", headers });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[OrderAPI Error Response]", response.status, errorData);
+      throw new Error(
+        errorData.message ||
+          `Order API request failed with status ${response.status}`,
+      );
+    }
+
+    const data = await response.json();
+    console.log("[OrderAPI Success Response]", data);
+    return data;
+  } catch (error) {
+    console.error("[OrderAPI Network/Fetch Exception]", error);
     throw error;
   }
 }
 
 export const storeApi = {
-  getCart: () => requestStoreApi('GET'),
-  
-  addItem: (id: number, quantity: number = 1) => 
-    requestStoreApi('POST', '/add-item', { id, quantity }),
-    
-  updateItem: (key: string, quantity: number) => 
-    requestStoreApi('POST', '/update-item', { key, quantity }),
-    
-  removeItem: (key: string) => 
-    requestStoreApi('POST', '/remove-item', { key }),
-    
-  applyCoupon: (code: string) => 
-    requestStoreApi('POST', '/apply-coupon', { code }),
-    
-  removeCoupon: (code: string) => 
-    requestStoreApi('POST', '/remove-coupon', { code }),
+  getCart: (cartToken?: string) =>
+    requestStoreApi("GET", "", undefined, cartToken),
+
+  addItem: (id: number, quantity: number = 1, variation?: VariationAttribute[]) => {
+    const body: any = { id, quantity };
+    if (variation && variation.length > 0) {
+      body.variation = variation;
+    }
+    return requestStoreApi("POST", "/add-item", body);
+  },
+
+  updateItem: (key: string, quantity: number) =>
+    requestStoreApi("POST", "/update-item", { key, quantity }),
+
+  removeItem: (key: string) => requestStoreApi("POST", "/remove-item", { key }),
+
+  applyCoupon: (code: string) =>
+    requestStoreApi("POST", "/apply-coupon", { code }),
+
+  removeCoupon: (code: string) =>
+    requestStoreApi("POST", "/remove-coupon", { code }),
+
+  updateCustomer: (customerData: CustomerData) =>
+    requestStoreApi("POST", "/update-customer", customerData),
+
+  checkout: (payload: CheckoutPayload): Promise<StoreCheckoutResponse> =>
+    requestStoreApi(
+      "POST",
+      "",
+      payload,
+      undefined,
+      getCheckoutApiUrl(),
+    ) as Promise<StoreCheckoutResponse>,
+
+  getOrder: (
+    orderId: number,
+    orderKey: string,
+    billingEmail: string,
+  ): Promise<OrderResponse> => requestOrderApi(orderId, orderKey, billingEmail),
 };
+
+function persistCartToken(token: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CART_TOKEN_KEY, token);
+  document.cookie = [
+    `${CART_TOKEN_KEY}=${token}`,
+    "Path=/",
+    "Max-Age=31536000",
+    "SameSite=Lax",
+  ].join("; ");
+}

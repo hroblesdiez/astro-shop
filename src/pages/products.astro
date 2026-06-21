@@ -71,6 +71,7 @@ function filterUrl(key: string, value: string | undefined) {
     after: undefined,
   });
 }
+
 ---
 
 <Layout title="Shop">
@@ -210,18 +211,29 @@ function filterUrl(key: string, value: string | undefined) {
     <!-- Grid -->
     {products.length > 0 ? (
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((p: any) => (
-          <ProductCard
-            databaseId={p.databaseId}
-            name={p.name}
-            slug={p.slug}
-            price={p.price}
-            regularPrice={p.regularPrice}
-            salePrice={p.salePrice}
-            image={p.image}
-            isVariable={Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0}
-          />
-        ))}
+        {products.map((p: any) => {
+          // Handle both GraphQL (stockStatus string) and Store API (is_in_stock boolean) responses
+          let isInStock = true;
+          if (typeof p.is_in_stock === 'boolean') {
+            isInStock = p.is_in_stock;
+          } else if (typeof p.stockStatus === 'string') {
+            isInStock = p.stockStatus === 'IN STOCK' || p.stockStatus === 'IN_STOCK';
+          }
+
+          return (
+            <ProductCard
+              databaseId={p.databaseId}
+              name={p.name}
+              slug={p.slug}
+              price={p.price}
+              regularPrice={p.regularPrice}
+              salePrice={p.salePrice}
+              image={p.image}
+              isVariable={Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0}
+              isInStock={isInStock}
+            />
+          );
+        })}
       </div>
     ) : (
       <div class="text-center py-24">

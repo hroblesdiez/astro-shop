@@ -7,13 +7,14 @@ interface Props {
   regularPrice: string;
   salePrice: string | null;
   isVariable?: boolean;
+  isInStock?: boolean;
   image: {
     sourceUrl: string;
     altText: string;
   } | null;
 }
 
-const { name, slug, price, regularPrice, salePrice, image, isVariable = false } = Astro.props;
+const { name, slug, price, regularPrice, salePrice, image, isVariable = false, isInStock = true } = Astro.props;
 ---
 
 <article class="group flex flex-col bg-(--color-surface) border border-(--color-border) hover:shadow-md transition-shadow">
@@ -52,15 +53,21 @@ const { name, slug, price, regularPrice, salePrice, image, isVariable = false } 
     </div>
 
     <button
-      class="mt-auto bg-(--color-btn-cart) text-white text-xs font-medium tracking-wide py-2.5 px-4 hover:opacity-90 transition-opacity cursor-pointer"
+      class={`mt-auto bg-(--color-btn-cart) text-white text-xs font-medium tracking-wide py-2.5 px-4 transition-opacity ${
+        !isInStock
+          ? 'opacity-50 cursor-not-allowed'
+          : 'hover:opacity-90 cursor-pointer'
+      }`}
+      disabled={!isInStock}
       data-product-id={Astro.props.databaseId}
       data-product-slug={slug}
       data-product-name={name}
       data-product-price={price}
       data-product-image={image?.sourceUrl}
       data-is-variable={isVariable ? 'true' : 'false'}
+      data-is-in-stock={isInStock ? 'true' : 'false'}
     >
-      {isVariable ? 'Select options' : 'Add to cart'}
+      {!isInStock ? 'Out of Stock' : (isVariable ? 'Select options' : 'Add to cart')}
     </button>
   </div>
 </article>
@@ -74,7 +81,15 @@ const { name, slug, price, regularPrice, salePrice, image, isVariable = false } 
       if (!btn) return;
 
       const productIdAttr = btn.getAttribute('data-product-id');
+      const isInStockAttr = btn.getAttribute('data-is-in-stock');
+      
       if (!productIdAttr) return;
+
+      // Don't proceed if out of stock
+      if (isInStockAttr === 'false') {
+        e.preventDefault();
+        return;
+      }
 
       const productId = parseInt(productIdAttr, 10);
       if (isNaN(productId)) return;

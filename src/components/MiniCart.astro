@@ -83,24 +83,23 @@
 
 <script>
   import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, removeCoupon } from '../lib/cart';
-  import type { StoreCart } from '../lib/store-api';
   import { formatStorePrice } from '../lib/price-utils';
 
-  let lastActiveElement: HTMLElement | null = null;
+  let lastActiveElement;
 
-  const backdrop = document.getElementById('mini-cart-backdrop') as HTMLDivElement;
-  const drawer = document.getElementById('mini-cart-drawer') as HTMLDivElement;
-  const closeBtn = document.getElementById('mini-cart-close') as HTMLButtonElement;
-  const container = document.getElementById('mini-cart-items-container') as HTMLDivElement;
-  const footer = document.getElementById('mini-cart-footer') as HTMLDivElement;
+  const backdrop = document.getElementById('mini-cart-backdrop');
+  const drawer = document.getElementById('mini-cart-drawer');
+  const closeBtn = document.getElementById('mini-cart-close');
+  const container = document.getElementById('mini-cart-items-container');
+  const footer = document.getElementById('mini-cart-footer');
   
-  const subtotalEl = document.getElementById('mini-cart-subtotal') as HTMLSpanElement;
-  const couponsContainer = document.getElementById('mini-cart-coupons-container') as HTMLDivElement;
-  const taxEl = document.getElementById('mini-cart-tax') as HTMLSpanElement;
-  const totalEl = document.getElementById('mini-cart-total') as HTMLSpanElement;
+  const subtotalEl = document.getElementById('mini-cart-subtotal');
+  const couponsContainer = document.getElementById('mini-cart-coupons-container');
+  const taxEl = document.getElementById('mini-cart-tax');
+  const totalEl = document.getElementById('mini-cart-total');
 
   // Render cart view synchronously from state object
-  function renderMiniCart(cart: StoreCart | null) {
+  function renderMiniCart(cart) {
     if (!container) return;
 
     if (!cart || !cart.items || cart.items.length === 0) {
@@ -232,7 +231,7 @@
 
   // Drawer Animation Controls
   function openMiniCart() {
-    lastActiveElement = document.activeElement as HTMLElement;
+    lastActiveElement = document.activeElement;
     
     backdrop?.classList.remove('pointer-events-none', 'opacity-0');
     backdrop?.classList.add('opacity-100');
@@ -263,7 +262,7 @@
   }
 
   // Focus locking + Keyboard shortcut triggers
-  function handleFocusTrapAndEscape(e: KeyboardEvent) {
+  function handleFocusTrapAndEscape(e) {
     if (e.key === 'Escape') {
       closeMiniCart();
       return;
@@ -274,8 +273,8 @@
       const elements = drawer?.querySelectorAll(focusableSelectors);
       if (!elements || elements.length === 0) return;
 
-      const firstEl = elements[0] as HTMLElement;
-      const lastEl = elements[elements.length - 1] as HTMLElement;
+      const firstEl = elements[0];
+      const lastEl = elements[elements.length - 1];
 
       if (e.shiftKey) {
         if (document.activeElement === firstEl) {
@@ -298,9 +297,9 @@
     renderMiniCart(initialCart);
 
     // Dynamic state channel connection
-    window.addEventListener('cart-updated', ((e: CustomEvent<StoreCart>) => {
+    window.addEventListener('cart-updated', ((e) => {
       renderMiniCart(e.detail);
-    }) as EventListener);
+    }));
 
     // Global toggle link bounds
     window.addEventListener('toggle-mini-cart', () => {
@@ -313,6 +312,12 @@
 
     backdrop?.addEventListener('click', closeMiniCart);
     closeBtn?.addEventListener('click', closeMiniCart);
+
+    // "Checkout" button: close drawer and navigate to checkout
+    document.getElementById('mini-cart-checkout')?.addEventListener('click', () => {
+      closeMiniCart();
+      window.location.href = '/checkout';
+    });
 
     // "Continue Shopping" closes drawer before navigating
     document.getElementById('mini-cart-continue')?.addEventListener('click', () => {

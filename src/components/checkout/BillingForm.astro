@@ -1,0 +1,334 @@
+---
+import { COUNTRY_STATES, countryRequiresState } from '../../lib/country-states';
+
+export interface Props {
+  initialData?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    country?: string;
+    state?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    postcode?: string;
+  };
+  errors?: Record<string, string>;
+}
+
+const { initialData = {}, errors = {} } = Astro.props;
+const countries = ['PL', 'DE', 'FR', 'GB', 'IT', 'ES'];
+const selectedCountry = initialData.country || 'PL';
+
+const inputClass =
+  'w-full px-3 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-sm)] ' +
+  'text-sm text-[var(--color-text-base)] placeholder:text-[var(--color-text-muted)] ' +
+  'focus:outline-none focus:ring-2 focus:ring-[var(--color-btn-cta)] focus:border-[var(--color-btn-cta)] ' +
+  'transition-colors aria-invalid:border-red-500 aria-invalid:focus:ring-red-300 ' +
+  'disabled:bg-[var(--color-primary)] disabled:text-[var(--color-text-muted)] disabled:cursor-not-allowed';
+
+const labelClass = 'block text-sm font-medium text-[var(--color-text-base)] mb-1.5';
+const errorClass = 'text-xs text-red-600 mt-1.5';
+---
+
+<div
+  class="billing-form bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8"
+  data-form="billing"
+  data-country-states={JSON.stringify(COUNTRY_STATES)}
+>
+  <fieldset>
+    <legend class="font-heading text-xl text-[var(--color-text-base)] mb-6 pb-4 border-b border-[var(--color-border)] w-full">
+      Billing Address
+    </legend>
+
+    <label class="flex items-center gap-2 mb-6 text-sm text-[var(--color-text-base)] cursor-pointer">
+      <input
+        type="checkbox"
+        id="billing-same-as-shipping"
+        class="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-btn-cta)] focus:ring-[var(--color-btn-cta)]"
+      />
+      Billing address same as shipping
+    </label>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="billing-firstName" class={labelClass}>
+          First Name
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="billing-firstName"
+          name="billing.firstName"
+          value={initialData.firstName || ''}
+          required
+          aria-invalid={!!errors['billing.firstName']}
+          aria-describedby={errors['billing.firstName'] ? 'billing-firstName-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.firstName'] && (
+          <p id="billing-firstName-error" class={errorClass}>
+            {errors['billing.firstName']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="billing-lastName" class={labelClass}>
+          Last Name
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="billing-lastName"
+          name="billing.lastName"
+          value={initialData.lastName || ''}
+          required
+          aria-invalid={!!errors['billing.lastName']}
+          aria-describedby={errors['billing.lastName'] ? 'billing-lastName-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.lastName'] && (
+          <p id="billing-lastName-error" class={errorClass}>
+            {errors['billing.lastName']}
+          </p>
+        )}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="billing-email" class={labelClass}>
+          Email
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="email"
+          id="billing-email"
+          name="billing.email"
+          value={initialData.email || ''}
+          required
+          aria-invalid={!!errors['billing.email']}
+          aria-describedby={errors['billing.email'] ? 'billing-email-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.email'] && (
+          <p id="billing-email-error" class={errorClass}>
+            {errors['billing.email']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="billing-phone" class={labelClass}>
+          Phone (Optional)
+        </label>
+        <input
+          type="tel"
+          id="billing-phone"
+          name="billing.phone"
+          value={initialData.phone || ''}
+          class={inputClass}
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="billing-country" class={labelClass}>
+          Country
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <select
+          id="billing-country"
+          name="billing.country"
+          required
+          aria-invalid={!!errors['billing.country']}
+          aria-describedby={errors['billing.country'] ? 'billing-country-error' : undefined}
+          class={inputClass}
+        >
+          {countries.map(code => (
+            <option value={code} selected={selectedCountry === code}>
+              {code}
+            </option>
+          ))}
+        </select>
+        {errors['billing.country'] && (
+          <p id="billing-country-error" class={errorClass}>
+            {errors['billing.country']}
+          </p>
+        )}
+      </div>
+
+      <div id="billing-state-wrapper" style={countryRequiresState(selectedCountry) ? '' : 'display:none'}>
+        <label for="billing-state" class={labelClass}>
+          Province / State
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <select
+          id="billing-state"
+          name="billing.state"
+          aria-invalid={!!errors['billing.state']}
+          aria-describedby={errors['billing.state'] ? 'billing-state-error' : undefined}
+          class={inputClass}
+        >
+          <option value="">Select…</option>
+          {(COUNTRY_STATES[selectedCountry] || []).map(s => (
+            <option value={s.code} selected={initialData.state === s.code}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        {errors['billing.state'] && (
+          <p id="billing-state-error" class={errorClass}>
+            {errors['billing.state']}
+          </p>
+        )}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="billing-address1" class={labelClass}>
+          Address Line 1
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="billing-address1"
+          name="billing.address1"
+          value={initialData.address1 || ''}
+          required
+          aria-invalid={!!errors['billing.address1']}
+          aria-describedby={errors['billing.address1'] ? 'billing-address1-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.address1'] && (
+          <p id="billing-address1-error" class={errorClass}>
+            {errors['billing.address1']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="billing-address2" class={labelClass}>
+          Address Line 2 (Optional)
+        </label>
+        <input
+          type="text"
+          id="billing-address2"
+          name="billing.address2"
+          value={initialData.address2 || ''}
+          class={inputClass}
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label for="billing-city" class={labelClass}>
+          City
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="billing-city"
+          name="billing.city"
+          value={initialData.city || ''}
+          required
+          aria-invalid={!!errors['billing.city']}
+          aria-describedby={errors['billing.city'] ? 'billing-city-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.city'] && (
+          <p id="billing-city-error" class={errorClass}>
+            {errors['billing.city']}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="billing-postcode" class={labelClass}>
+          Postal Code
+          <span class="text-red-600" aria-label="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="billing-postcode"
+          name="billing.postcode"
+          value={initialData.postcode || ''}
+          placeholder="XX-XXX"
+          required
+          aria-invalid={!!errors['billing.postcode']}
+          aria-describedby={errors['billing.postcode'] ? 'billing-postcode-error' : undefined}
+          class={inputClass}
+        />
+        {errors['billing.postcode'] && (
+          <p id="billing-postcode-error" class={errorClass}>
+            {errors['billing.postcode']}
+          </p>
+        )}
+      </div>
+    </div>
+  </fieldset>
+</div>
+
+<script>
+  // Toggles and repopulates the Province/State select when the country changes.
+  function initBillingStateToggle() {
+    const wrapper = document.querySelector('[data-form="billing"]') as HTMLElement | null;
+    if (!wrapper) return;
+
+    const countrySelect = document.getElementById('billing-country') as HTMLSelectElement | null;
+    const stateWrapper = document.getElementById('billing-state-wrapper') as HTMLElement | null;
+    const stateSelect = document.getElementById('billing-state') as HTMLSelectElement | null;
+
+    if (!countrySelect || !stateWrapper || !stateSelect) return;
+
+    let countryStates: Record<string, Array<{ code: string; name: string }>> = {};
+    try {
+      countryStates = JSON.parse(wrapper.dataset.countryStates || '{}');
+    } catch {
+      countryStates = {};
+    }
+
+    const updateStateField = (countryCode: string, preserveValue?: string) => {
+      const states = countryStates[countryCode] || [];
+
+      if (states.length === 0) {
+        stateWrapper.style.display = 'none';
+        stateSelect.innerHTML = '';
+        stateSelect.value = '';
+        return;
+      }
+
+      stateWrapper.style.display = '';
+      stateSelect.innerHTML =
+        '<option value="">Select…</option>' +
+        states
+          .map(s => `<option value="${s.code}">${s.name}</option>`)
+          .join('');
+
+      if (preserveValue && states.some(s => s.code === preserveValue)) {
+        stateSelect.value = preserveValue;
+      }
+    };
+
+    countrySelect.addEventListener('change', () => {
+      // Manual country changes only apply when the field isn't synced from shipping.
+      if (countrySelect.disabled) return;
+      updateStateField(countrySelect.value);
+    });
+
+    // Expose for CheckoutForm's same-as-shipping sync, which needs to repopulate
+    // the state dropdown after copying a country value programmatically.
+    (wrapper as any).__updateBillingStateField = updateStateField;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBillingStateToggle);
+  } else {
+    initBillingStateToggle();
+  }
+</script>
