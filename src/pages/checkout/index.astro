@@ -1,14 +1,29 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import CheckoutForm from '../../components/checkout/CheckoutForm.astro';
-import { storeApi } from '../../lib/store-api';
 
 let cart = null;
 let error = null;
+let storeNonce = '';
 
 try {
   const cartToken = Astro.cookies.get('woo_cart_token')?.value;
-  cart = await storeApi.getCart(cartToken);
+
+  const graphqlUrl = import.meta.env.PUBLIC_GRAPHQL_URL || 'http://localhost:8080/graphql';
+  const baseUrl = graphqlUrl.replace(/\/graphql$/, '');
+  const targetUrl = `${baseUrl}/wp-json/wc/store/v1/cart`;
+
+  const cartRes = await fetch(targetUrl, {
+    headers: {
+      Accept: 'application/json',
+      ...(cartToken ? { 'Cart-Token': cartToken } : {}),
+    },
+  });
+
+  if (!cartRes.ok) throw new Error(`Cart API responded with ${cartRes.status}`);
+
+  storeNonce = cartRes.headers.get('Nonce') || cartRes.headers.get('X-WC-Store-API-Nonce') || '';
+  cart = await cartRes.json();
 
   if (!cart || !cart.items || cart.items.length === 0) {
     return Astro.redirect('/cart');
@@ -38,6 +53,6 @@ try {
       </div>
     </div>
   ) : cart ? (
-    <CheckoutForm cart={cart} />
+    <CheckoutForm cart={cart} storeNonce={storeNonce} />
   ) : null}
 </Layout>

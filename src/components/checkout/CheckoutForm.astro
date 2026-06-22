@@ -2,13 +2,21 @@
 import BillingForm from './BillingForm.astro';
 import ShippingForm from './ShippingForm.astro';
 import OrderReview from './OrderReview.astro';
+import StripePaymentElement from './StripePaymentElement.astro';
 import type { StoreCart } from '../../lib/store-api';
+import { getCachedCheckoutState, saveCheckoutState, saveOrderConfirmation } from '../../lib/checkout-state';
+import { submitCheckout } from '../../lib/checkout-service';
+import { clearCartCache } from '../../lib/cart';
+import { createPaymentIntent, confirmPaymentIntent } from '../../lib/stripe-service';
 
 export interface Props {
   cart: StoreCart;
+  storeNonce?: string;
 }
 
-const { cart } = Astro.props;
+const { cart, storeNonce = '' } = Astro.props;
+
+const amountInCents = parseInt(cart.totals.total_price, 10);
 ---
 
 <div class="checkout-form-wrapper" data-checkout-form>
@@ -25,6 +33,18 @@ const { cart } = Astro.props;
         <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
           <fieldset>
             <legend class="font-heading text-xl text-[var(--color-text-base)] mb-6 pb-4 border-b border-[var(--color-border)] w-full">
+              Payment Method
+            </legend>
+
+            <div id="stripe-wrapper">
+              <StripePaymentElement />
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 sm:p-8">
+          <fieldset>
+            <legend class="font-heading text-xl text-[var(--color-text-base)] mb-6 pb-4 border-b border-[var(--color-border)] w-full">
               Additional Information
             </legend>
 
@@ -36,7 +56,7 @@ const { cart } = Astro.props;
                 id="order-notes"
                 name="orderNotes"
                 rows="4"
-                placeholder="Special instructions or delivery notes..."
+                placeholder="Special instructions..."
                 class="w-full px-3 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-sm text-[var(--color-text-base)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-btn-cta)] focus:border-[var(--color-btn-cta)] transition-colors"
               ></textarea>
             </div>
@@ -63,90 +83,137 @@ const { cart } = Astro.props;
   </div>
 </div>
 
-<script>
-  import { getCachedCheckoutState, saveCheckoutState, saveOrderConfirmation } from '../../lib/checkout-state';
-  import { submitCheckout } from '../../lib/checkout-service';
-  import { clearCartCache } from '../../lib/cart';
-
-  // Billing fields that mirror shipping when "same as shipping" is checked.
-  // Email and phone are billing-only and are never synced.
-  const SYNCED_FIELDS = ['firstName', 'lastName', 'country', 'state', 'address1', 'address2', 'city', 'postcode'] as const;
+<script define:vars={{ amountInCents, currencyCode: cart.totals.currency_code, storeNonce }}>
+  console.log('[CheckoutForm] Script initializing...');
 
   function initCheckoutForm() {
-    console.log('[CheckoutForm] Initializing...');
+    console.log('[CheckoutForm] Form init starting...');
 
-    const form = document.getElementById('checkout-form') as HTMLFormElement;
-    const submitBtn = document.getElementById('checkout-submit') as HTMLButtonElement;
-    const errorsContainer = document.getElementById('errors-container') as HTMLDivElement;
-    const sameAsShippingCheckbox = document.getElementById('billing-same-as-shipping') as HTMLInputElement | null;
-    const billingWrapper = document.querySelector('[data-form="billing"]') as HTMLElement | null;
+    const form = document.getElementById('checkout-form');
+    const submitBtn = document.getElementById('checkout-submit');
+    const errorsContainer = document.getElementById('errors-container');
+    const sameAsShippingCheckbox = document.getElementById('billing-same-as-shipping');
+    const billingWrapper = document.querySelector('[data-form="billing"]');
+
+    console.log('[CheckoutForm] DOM elements found:', {
+      form: !!form,
+      submitBtn: !!submitBtn,
+      errorsContainer: !!errorsContainer,
+      sameAsShippingCheckbox: !!sameAsShippingCheckbox,
+      billingWrapper: !!billingWrapper,
+    });
 
     if (!form || !submitBtn) {
-      console.warn('[CheckoutForm] Required elements not found');
+      console.error('[CheckoutForm] CRITICAL: Required form elements not found');
       return;
     }
 
-    const cachedState = getCachedCheckoutState();
+    const SYNCED_FIELDS = ['firstName', 'lastName', 'country', 'state', 'address1', 'address2', 'city', 'postcode'];
 
-    const populateForm = (state: any) => {
-      Object.entries(state).forEach(([key, value]: [string, any]) => {
-        if (typeof value === 'object') {
-          Object.entries(value).forEach(([subKey, subValue]: [string, any]) => {
-            const input = form.querySelector(`[name="${key}.${subKey}"]`) as HTMLInputElement | HTMLTextAreaElement;
-            if (input && subValue) input.value = subValue;
-          });
-        } else if (key === 'orderNotes' && value) {
-          const textarea = form.querySelector(`[name="${key}"]`) as HTMLTextAreaElement;
-          if (textarea) textarea.value = value;
+    // Stripe initialization on page load
+    let piId = '';
+    let stripeInitialized = false;
+
+    (async function initStripeOnLoad() {
+      try {
+        const piRes = await fetch('/api/stripe/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: amountInCents, currency: currencyCode }),
+        });
+        if (!piRes.ok) return;
+        const data = await piRes.json();
+        piId = data.paymentIntentId;
+        const fns = window.stripePaymentFunctions;
+        if (fns) {
+          await fns.initStripePayment(data.clientSecret);
+          stripeInitialized = true;
+        }
+      } catch (e) {
+        console.warn('[CheckoutForm] Page-load Stripe init failed:', e);
+      }
+    })();
+
+    // Get current state from page
+    const getCurrentFormState = () => {
+      const state = {
+        billing: {},
+        shipping: {},
+        orderNotes: '',
+      };
+
+      SYNCED_FIELDS.forEach(field => {
+        const shippingInput = form.querySelector(`[name="shipping.${field}"]`);
+        const billingInput = form.querySelector(`[name="billing.${field}"]`);
+
+        if (shippingInput) state.shipping[field] = shippingInput.value;
+        if (billingInput) state.billing[field] = billingInput.value;
+      });
+
+      const emailInput = form.querySelector('[name="billing.email"]');
+      const phoneInput = form.querySelector('[name="billing.phone"]');
+      if (emailInput) state.billing.email = emailInput.value;
+      if (phoneInput) state.billing.phone = phoneInput.value;
+
+      const notesInput = form.querySelector('[name="orderNotes"]');
+      if (notesInput) state.orderNotes = notesInput.value;
+
+      return state;
+    };
+
+    const setBillingFieldsDisabled = (disabled) => {
+      console.log('[CheckoutForm] Setting billing fields disabled:', disabled);
+      SYNCED_FIELDS.forEach(field => {
+        const el = form.querySelector(`[name="billing.${field}"]`);
+        if (el) {
+          el.disabled = disabled;
         }
       });
     };
 
-    populateForm(cachedState);
-
-    const setBillingFieldsDisabled = (disabled: boolean) => {
-      SYNCED_FIELDS.forEach(field => {
-        const el = form.querySelector(`[name="billing.${field}"]`) as HTMLInputElement | HTMLSelectElement | null;
-        if (el) el.disabled = disabled;
-      });
-    };
-
     const syncBillingFromShipping = () => {
+      console.log('[CheckoutForm] Syncing billing from shipping...');
+
       SYNCED_FIELDS.forEach(field => {
-        const shippingEl = form.querySelector(`[name="shipping.${field}"]`) as HTMLInputElement | HTMLSelectElement | null;
-        const billingEl = form.querySelector(`[name="billing.${field}"]`) as HTMLInputElement | HTMLSelectElement | null;
-        if (!shippingEl || !billingEl) return;
+        const shippingEl = form.querySelector(`[name="shipping.${field}"]`);
+        const billingEl = form.querySelector(`[name="billing.${field}"]`);
+
+        if (!shippingEl || !billingEl) {
+          console.warn(`[CheckoutForm] Missing element for field: ${field}`);
+          return;
+        }
 
         if (field === 'country') {
           billingEl.value = shippingEl.value;
-          // Repopulate billing's state dropdown for the new country before
-          // copying the state value below.
-          const updateFn = (billingWrapper as any)?.__updateBillingStateField;
+          console.log(`[CheckoutForm] Synced country: ${billingEl.value}`);
+
+          // Trigger update for state dropdown
+          const updateFn = billingWrapper?.__updateBillingStateField;
           if (typeof updateFn === 'function') {
+            console.log('[CheckoutForm] Updating billing state dropdown');
             updateFn(shippingEl.value);
           }
           return;
         }
 
         billingEl.value = shippingEl.value;
+        console.log(`[CheckoutForm] Synced ${field}: ${billingEl.value}`);
       });
 
-      // State must run after country so the dropdown options exist.
-      const shippingState = form.querySelector('[name="shipping.state"]') as HTMLSelectElement | null;
-      const billingState = form.querySelector('[name="billing.state"]') as HTMLSelectElement | null;
+      // Sync state field after country
+      const shippingState = form.querySelector('[name="shipping.state"]');
+      const billingState = form.querySelector('[name="billing.state"]');
       if (shippingState && billingState) {
         billingState.value = shippingState.value;
+        console.log(`[CheckoutForm] Synced state: ${billingState.value}`);
       }
-
-      const stateCopy = structuredClone(getCachedCheckoutState());
-      SYNCED_FIELDS.forEach(field => {
-        (stateCopy.billing as any)[field] = (stateCopy.shipping as any)[field];
-      });
-      saveCheckoutState(stateCopy);
     };
 
+    // Billing same as shipping checkbox
     if (sameAsShippingCheckbox) {
+      console.log('[CheckoutForm] Attaching billing-same-as-shipping listener');
       sameAsShippingCheckbox.addEventListener('change', () => {
+        console.log('[CheckoutForm] Checkbox changed:', sameAsShippingCheckbox.checked);
         if (sameAsShippingCheckbox.checked) {
           syncBillingFromShipping();
           setBillingFieldsDisabled(true);
@@ -154,67 +221,173 @@ const { cart } = Astro.props;
           setBillingFieldsDisabled(false);
         }
       });
+    } else {
+      console.warn('[CheckoutForm] billing-same-as-shipping checkbox not found');
     }
 
-    form.addEventListener('change', (e: Event) => {
-      const target = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-      const name = target.name;
-      if (!name) return;
-
-      const stateCopy = structuredClone(getCachedCheckoutState());
-      const [section, field] = name.split('.');
-
-      if (section && field) {
-        (stateCopy[section as keyof typeof stateCopy] as any)[field] = target.value;
-      } else if (section === 'orderNotes') {
-        stateCopy.orderNotes = target.value;
-      }
-
-      saveCheckoutState(stateCopy);
-
-      // Keep billing mirrored to shipping while sync mode is active.
-      if (
-        sameAsShippingCheckbox?.checked &&
-        section === 'shipping' &&
-        SYNCED_FIELDS.includes(field as (typeof SYNCED_FIELDS)[number])
-      ) {
-        syncBillingFromShipping();
-      }
-    });
-
-    form.addEventListener('submit', async (e: Event) => {
+    // Form submission
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('[CheckoutForm] Form submitted');
 
       submitBtn.disabled = true;
       const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Processing...';
+      submitBtn.textContent = 'Processing Payment...';
       errorsContainer.innerHTML = '';
 
       try {
-        const state = getCachedCheckoutState();
-        const response = await submitCheckout(state);
+        const formState = getCurrentFormState();
+        console.log('[CheckoutForm] Current form state:', formState);
 
-        if (!response.success) {
+        // Map to WooCommerce Store API format
+        const checkoutPayload = {
+          billing_address: {
+            first_name: formState.billing.firstName,
+            last_name: formState.billing.lastName,
+            email: formState.billing.email,
+            phone: formState.billing.phone,
+            country: formState.billing.country,
+            state: formState.billing.state,
+            address_1: formState.billing.address1,
+            address_2: formState.billing.address2 || '',
+            city: formState.billing.city,
+            postcode: formState.billing.postcode,
+          },
+          shipping_address: {
+            first_name: formState.shipping.firstName,
+            last_name: formState.shipping.lastName,
+            country: formState.shipping.country,
+            state: formState.shipping.state,
+            address_1: formState.shipping.address1,
+            address_2: formState.shipping.address2 || '',
+            city: formState.shipping.city,
+            postcode: formState.shipping.postcode,
+          },
+          payment_method: 'bacs',
+          payment_method_title: 'Direct bank transfer',
+          order_notes: formState.orderNotes || '',
+        };
+
+        console.log('[CheckoutForm] Sending checkout payload:', checkoutPayload);
+
+        const checkoutHeaders = { 'Content-Type': 'application/json' };
+        const activeNonce = storeNonce || localStorage.getItem('woo_cart_nonce') || '';
+        if (activeNonce) {
+          checkoutHeaders['Nonce'] = activeNonce;
+          checkoutHeaders['X-WC-Store-API-Nonce'] = activeNonce;
+        }
+        const cartToken = localStorage.getItem('woo_cart_token') || '';
+        if (cartToken) {
+          checkoutHeaders['Cart-Token'] = cartToken;
+        }
+
+        const checkoutRes = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: checkoutHeaders,
+          body: JSON.stringify(checkoutPayload),
+        });
+
+        if (!checkoutRes.ok) {
+          const error = await checkoutRes.json();
+          throw new Error(error.message || 'Checkout failed');
+        }
+
+        const checkoutResponse = await checkoutRes.json();
+        console.log('[CheckoutForm] Checkout response:', checkoutResponse);
+
+        const orderId = checkoutResponse.order_id;
+        const orderKey = checkoutResponse.order_key;
+
+        if (!orderId) {
           errorsContainer.innerHTML = `
             <div class="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p class="text-red-800 font-medium mb-2">There were errors with your order:</p>
-              <ul class="text-red-700 space-y-1 text-sm">
-                ${response.errors?.map(err => `<li>• ${err.message}</li>`).join('') || '<li>Unknown error</li>'}
-              </ul>
+              <p class="text-red-800 font-medium mb-2">Checkout Error</p>
+              <p class="text-red-700 text-sm">Order ID not returned from checkout</p>
             </div>
           `;
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         }
 
-        saveOrderConfirmation(response.orderId!, response.orderKey!, state.billing.email!);
-        clearCartCache();
-        window.location.href = `/checkout/confirmation/${response.orderId}`;
+        console.log('[CheckoutForm] Order created:', orderId);
+
+        const stripePaymentFns = window.stripePaymentFunctions;
+        if (!stripePaymentFns) {
+          throw new Error('Stripe payment functions not available - please refresh the page');
+        }
+
+        if (!stripeInitialized) {
+          console.log('[CheckoutForm] Creating payment intent (fallback)...');
+          const piRes = await fetch('/api/stripe/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: amountInCents,
+              currency: currencyCode,
+              orderId,
+              customerEmail: formState.billing.email,
+            }),
+          });
+
+          if (!piRes.ok) {
+            const error = await piRes.json();
+            throw new Error(error.message || 'Failed to create payment intent');
+          }
+
+          const piData = await piRes.json();
+          piId = piData.paymentIntentId;
+
+          await stripePaymentFns.initStripePayment(piData.clientSecret);
+          stripeInitialized = true;
+        } else {
+          console.log('[CheckoutForm] Updating payment intent with order ID...');
+          const updateRes = await fetch('/api/stripe/update-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentIntentId: piId, orderId }),
+          });
+
+          if (!updateRes.ok) {
+            const error = await updateRes.json();
+            throw new Error(error.message || 'Failed to update payment intent');
+          }
+        }
+
+        console.log('[CheckoutForm] Submitting payment...');
+        await stripePaymentFns.submitStripePayment();
+
+        console.log('[CheckoutForm] Payment submitted, confirming...');
+        const confirmRes = await fetch('/api/stripe/confirm-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: piId }),
+        });
+
+        if (!confirmRes.ok) {
+          const error = await confirmRes.json();
+          throw new Error(error.message || 'Payment confirmation failed');
+        }
+
+        const confirmResult = await confirmRes.json();
+
+        if (confirmResult.status !== 'succeeded') {
+          throw new Error(`Payment failed with status: ${confirmResult.status}`);
+        }
+
+        console.log('[CheckoutForm] Payment succeeded!');
+
+        sessionStorage.setItem('woo_order_id', orderId.toString());
+        sessionStorage.setItem('woo_order_key', orderKey);
+        sessionStorage.setItem('woo_order_billing_email', formState.billing.email);
+        localStorage.removeItem('woo_cart_state');
+        window.location.href = `/checkout/confirmation/${orderId}`;
       } catch (error) {
-        console.error('[CheckoutForm] Unexpected error:', error);
+        console.error('[CheckoutForm] Error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
         errorsContainer.innerHTML = `
           <div class="p-4 bg-red-50 border border-red-200 rounded-md">
-            <p class="text-red-800 font-medium">An unexpected error occurred. Please try again.</p>
+            <p class="text-red-800 font-medium">Payment Error</p>
+            <p class="text-red-700 text-sm mt-2">${errorMessage}</p>
           </div>
         `;
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -223,6 +396,8 @@ const { cart } = Astro.props;
         submitBtn.textContent = originalText;
       }
     });
+
+    console.log('[CheckoutForm] Form initialization complete');
   }
 
   if (document.readyState === 'loading') {

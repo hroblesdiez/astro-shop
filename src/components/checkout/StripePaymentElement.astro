@@ -1,0 +1,85 @@
+---
+// No code needed in frontmatter
+---
+
+<div id="stripe-payment-element-container" class="mt-6"></div>
+
+<script>
+  import { loadStripe } from '@stripe/stripe-js';
+
+  const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+  if (!stripePublishableKey) {
+    console.error('[StripePayment] Missing PUBLIC_STRIPE_PUBLISHABLE_KEY');
+  }
+
+  let stripe: any = null;
+  let elements: any = null;
+  let paymentElement: any = null;
+
+  const initStripePayment = async (clientSecret: string) => {
+    console.log('[StripePayment] Initializing with clientSecret');
+
+    try {
+      stripe = await loadStripe(stripePublishableKey);
+      if (!stripe) {
+        throw new Error('Failed to load Stripe');
+      }
+      console.log('[StripePayment] Stripe loaded');
+
+      elements = stripe.elements({ clientSecret });
+      if (!elements) {
+        throw new Error('Failed to create Stripe elements');
+      }
+      console.log('[StripePayment] Elements created');
+
+      paymentElement = elements.create('payment');
+      const container = document.getElementById('stripe-payment-element-container');
+
+      if (!container) {
+        throw new Error('Payment element container not found');
+      }
+
+      paymentElement.mount('#stripe-payment-element-container');
+      console.log('[StripePayment] Payment element mounted successfully');
+
+      return true;
+    } catch (error) {
+      console.error('[StripePayment] Init error:', error);
+      throw error;
+    }
+  };
+
+  const submitStripePayment = async () => {
+    if (!stripe || !elements) {
+      throw new Error('Stripe not initialized. Please refresh page.');
+    }
+
+    console.log('[StripePayment] Submitting payment...');
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        console.error('[StripePayment] Confirm payment error:', error);
+        throw new Error(error.message || 'Payment failed');
+      }
+
+      console.log('[StripePayment] Payment confirmed successfully');
+      return true;
+    } catch (error) {
+      console.error('[StripePayment] Submit error:', error);
+      throw error;
+    }
+  };
+
+  (window as any).stripePaymentFunctions = {
+    initStripePayment,
+    submitStripePayment,
+  };
+
+  console.log('[StripePayment] Component loaded, functions exposed');
+</script>
