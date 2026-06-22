@@ -1,6 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-// Dedicated Cart Page Template
 ---
 
 <Layout title="Your Shopping Cart" description="Review items in your cart before moving forward to checkout.">
@@ -57,9 +56,14 @@ import Layout from '../layouts/Layout.astro';
           <!-- Dynamic Coupon Discount Rows Container -->
           <div id="summary-coupons-container" class="space-y-2"></div>
 
+          <!-- Taxes with dynamic percentage and country -->
           <div class="flex justify-between text-neutral-600">
-            <span>Taxes</span>
+            <span id="summary-tax-label">Taxes</span>
             <span id="summary-tax">0,00€</span>
+          </div>
+
+          <div id="country-display" class="text-xs text-neutral-400 text-right">
+            <!-- Shows current country code -->
           </div>
 
           <div class="flex justify-between font-bold text-base text-neutral-900 pt-3 border-t border-neutral-200">
@@ -111,25 +115,27 @@ import Layout from '../layouts/Layout.astro';
 
 <script>
   import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, applyCoupon, removeCoupon } from '../lib/cart';
-  import type { StoreCart } from '../lib/store-api';
   import { formatStorePrice } from '../lib/price-utils';
+  import { initializeCountryFromGeolocation, getStoredBillingCountry } from '../lib/country-sync';
 
-  const loadingEl = document.getElementById('cart-page-loading') as HTMLDivElement;
-  const emptyEl = document.getElementById('cart-page-empty') as HTMLDivElement;
-  const contentEl = document.getElementById('cart-page-content') as HTMLDivElement;
-  const itemsList = document.getElementById('cart-page-items-list') as HTMLDivElement;
+  const loadingEl = document.getElementById('cart-page-loading');
+  const emptyEl = document.getElementById('cart-page-empty');
+  const contentEl = document.getElementById('cart-page-content');
+  const itemsList = document.getElementById('cart-page-items-list');
 
-  const subtotalEl = document.getElementById('summary-subtotal') as HTMLSpanElement;
-  const couponsContainer = document.getElementById('summary-coupons-container') as HTMLDivElement;
-  const taxEl = document.getElementById('summary-tax') as HTMLSpanElement;
-  const totalEl = document.getElementById('summary-total') as HTMLSpanElement;
+  const subtotalEl = document.getElementById('summary-subtotal');
+  const couponsContainer = document.getElementById('summary-coupons-container');
+  const taxLabelEl = document.getElementById('summary-tax-label');
+  const taxEl = document.getElementById('summary-tax');
+  const totalEl = document.getElementById('summary-total');
+  const countryDisplayEl = document.getElementById('country-display');
 
-  const couponForm = document.getElementById('coupon-form') as HTMLFormElement;
-  const couponInput = document.getElementById('coupon-input') as HTMLInputElement;
-  const couponSubmitBtn = document.getElementById('coupon-submit-btn') as HTMLButtonElement;
-  const couponFeedback = document.getElementById('coupon-feedback-msg') as HTMLParagraphElement;
+  const couponForm = document.getElementById('coupon-form');
+  const couponInput = document.getElementById('coupon-input');
+  const couponSubmitBtn = document.getElementById('coupon-submit-btn');
+  const couponFeedback = document.getElementById('coupon-feedback-msg');
 
-  function renderCartPage(cart: StoreCart | null) {
+  function renderCartPage(cart) {
     loadingEl?.classList.add('hidden');
 
     if (!cart || !cart.items || cart.items.length === 0) {
@@ -197,6 +203,21 @@ import Layout from '../layouts/Layout.astro';
     if (taxEl) taxEl.textContent = formatStorePrice(cart.totals.total_tax, minorUnit);
     if (totalEl) totalEl.textContent = formatStorePrice(cart.totals.total_price, minorUnit);
 
+    // Extract tax percentage from tax_lines and display country
+    if (taxLabelEl && cart.totals.tax_lines && cart.totals.tax_lines.length > 0) {
+      const taxRate = cart.totals.tax_lines[0].rate;
+      if (taxRate) {
+        const rateStr = taxRate.toString().replace('%', '');
+        taxLabelEl.textContent = `Taxes (${rateStr}%)`;
+      }
+    }
+
+    // Display country code
+    const currentCountry = getStoredBillingCountry();
+    if (countryDisplayEl && currentCountry) {
+      countryDisplayEl.textContent = `Country: ${currentCountry}`;
+    }
+
     // Handle Coupons block architectural layout
     if (couponsContainer) {
       if (cart.coupons && cart.coupons.length > 0) {
@@ -257,27 +278,30 @@ import Layout from '../layouts/Layout.astro';
         try {
           await removeCoupon(code);
           showFeedback('Coupon removed successfully.', 'text-emerald-600');
-        } catch (err: any) {
+        } catch (err) {
           showFeedback(err.message || 'Failed to remove coupon.', 'text-red-600');
         }
       });
     });
   }
 
-  function showFeedback(msg: string, textClass: string) {
+  function showFeedback(msg, textClass) {
     if (!couponFeedback) return;
     couponFeedback.textContent = msg;
     couponFeedback.className = `text-xs font-medium ${textClass}`;
   }
 
   // Setup listeners and forms
-  function initCartPage() {
+  async function initCartPage() {
+    // Initialize country from geolocation
+    await initializeCountryFromGeolocation();
+
     const currentCart = getCachedCart();
     renderCartPage(currentCart);
 
-    window.addEventListener('cart-updated', ((e: CustomEvent<StoreCart>) => {
+    window.addEventListener('cart-updated', (e) => {
       renderCartPage(e.detail);
-    }) as EventListener);
+    });
 
     // Form voucher Submission Handler
     couponForm?.addEventListener('submit', async (e) => {
@@ -292,7 +316,7 @@ import Layout from '../layouts/Layout.astro';
         await applyCoupon(code);
         showFeedback('Promo code applied successfully!', 'text-emerald-600');
         if (couponInput) couponInput.value = '';
-      } catch (err: any) {
+      } catch (err) {
         showFeedback(err.message || 'Invalid promotional coupon code.', 'text-red-600');
       } finally {
         if (couponSubmitBtn) couponSubmitBtn.disabled = false;

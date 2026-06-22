@@ -1,5 +1,5 @@
 ---
-import type { StoreCart } from '../lib/store-api';
+import type { StoreCart } from '../../lib/store-api';
 
 export interface Props {
   cart: StoreCart;
@@ -7,9 +7,6 @@ export interface Props {
 
 const { cart } = Astro.props;
 
-// WooCommerce Store API devuelve los precios como enteros escalados por
-// 10^currency_minor_unit (ej. "1082" + minor_unit 2 === 10.82). Si no se
-// divide, "10,82 zł" se muestra erróneamente como "1082,00 zł".
 const minorUnit = Number((cart.totals as any)?.currency_minor_unit ?? 2);
 const currencyCode = (cart.totals as any)?.currency_code || 'PLN';
 
@@ -21,6 +18,9 @@ const formatPrice = (price: string | number): string => {
     currency: currencyCode,
   }).format(value);
 };
+
+// Extract tax percentage
+const taxRate = cart.totals.tax_lines?.[0]?.rate?.toString().replace('%', '') || '0';
 ---
 
 <div class="order-review">
@@ -55,19 +55,19 @@ const formatPrice = (price: string | number): string => {
     <div class="space-y-3 mb-6 pb-6 border-b border-[var(--color-border)]">
       <div class="flex justify-between text-sm">
         <span class="text-[var(--color-text-muted)]">Subtotal</span>
-        <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_price)}</span>
+        <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_items)}</span>
       </div>
 
       {cart.coupons && cart.coupons.length > 0 && (
-        <div class="flex justify-between text-sm text-green-700">
-          <span>Discount ({cart.coupons.map(c => c.code).join(', ')})</span>
+        <div class="flex justify-between text-sm text-emerald-600">
+          <span class="font-medium">Discount ({cart.coupons.map(c => c.code).join(', ')})</span>
           <span>-{formatPrice(cart.totals.total_discount)}</span>
         </div>
       )}
 
       {parseFloat(cart.totals.total_tax) > 0 && (
         <div class="flex justify-between text-sm">
-          <span class="text-[var(--color-text-muted)]">Tax</span>
+          <span class="text-[var(--color-text-muted)]">Taxes ({taxRate}%)</span>
           <span class="text-[var(--color-text-base)]">{formatPrice(cart.totals.total_tax)}</span>
         </div>
       )}
@@ -84,11 +84,16 @@ const formatPrice = (price: string | number): string => {
       )}
     </div>
 
-    <div class="flex justify-between items-baseline">
+    <div class="flex justify-between items-baseline mb-4">
       <span class="font-heading text-lg text-[var(--color-text-base)]">Total</span>
       <span class="font-heading text-2xl text-[var(--color-text-base)]">
         {formatPrice(cart.totals.total_price)}
       </span>
+    </div>
+
+    <!-- Country Info -->
+    <div id="order-country-info" class="text-xs text-[var(--color-text-muted)] text-center pt-4 border-t border-[var(--color-border)]">
+      <!-- Populated by client-side script -->
     </div>
 
     {cart.errors && cart.errors.length > 0 && (
@@ -103,3 +108,14 @@ const formatPrice = (price: string | number): string => {
     )}
   </div>
 </div>
+
+<script>
+  // Display current country from localStorage
+  const countryDisplay = document.getElementById('order-country-info');
+  if (countryDisplay) {
+    const country = localStorage.getItem('woo_billing_country');
+    if (country) {
+      countryDisplay.textContent = `Billing country: ${country}`;
+    }
+  }
+</script>

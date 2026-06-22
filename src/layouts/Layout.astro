@@ -77,3 +77,8 @@ const ogImage = Astro.site
     <Footer />
   </body>
 </html>
+
+<script>
+  import { initializeCountryFromGeolocation } from '../lib/country-sync';
+  initializeCountryFromGeolocation().catch(console.warn);
+</script>
