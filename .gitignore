@@ -24,4 +24,4 @@ pnpm-debug.log*
 .idea/
 
 #Netlify
-.netlify/git status
+.netlify/
