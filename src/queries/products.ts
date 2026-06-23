@@ -30,10 +30,11 @@ export const GET_PRODUCT_BY_SLUG = gql`
   query GetProductBySlug($slug: ID!) {
     product(id: $slug, idType: SLUG) {
       databaseId
-      name
-      slug
-      description
-      shortDescription
+        name
+        slug
+        sku
+        description
+        shortDescription
 
       image {
         sourceUrl

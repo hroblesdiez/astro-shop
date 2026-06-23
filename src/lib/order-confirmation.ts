@@ -73,7 +73,8 @@ function renderOrderDetails(order: any) {
       ?.classList.add("hidden");
 
   const paymentEl = document.getElementById("payment-method");
-  if (paymentEl) paymentEl.textContent = "Direct bank transfer"; // hardcoded: submitCheckout siempre usa "bacs"
+  if (paymentEl)
+    paymentEl.textContent = order.payment_method_title || order.payment_method || "Card";
 
   document.getElementById("customer-email")!.textContent =
     order.billing_address.email;
