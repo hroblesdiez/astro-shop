@@ -59,13 +59,12 @@ function showError(message: string) {
 }
 
 function renderOrderDetails(order: any) {
-  document.getElementById("order-number")!.textContent = String(order.id); // no hay order_number real en este endpoint
-  document.getElementById("order-status")!.textContent = capitalizeStatus(
-    order.status,
-  );
+  const orderNumEl = document.getElementById("order-number");
+  if (orderNumEl) orderNumEl.textContent = String(order.id);
 
-  // date_created y payment_method_title no vienen en wc/store/v1/order/{id}.
-  // Oculta esas tarjetas o ponles un texto fijo si siempre usas el mismo método:
+  const statusEl = document.getElementById("order-status");
+  if (statusEl) statusEl.textContent = capitalizeStatus(order.status);
+
   const dateEl = document.getElementById("order-date");
   if (dateEl)
     dateEl
@@ -74,10 +73,11 @@ function renderOrderDetails(order: any) {
 
   const paymentEl = document.getElementById("payment-method");
   if (paymentEl)
-    paymentEl.textContent = order.payment_method_title || order.payment_method || "Card";
+    paymentEl.textContent =
+      order.payment_method_title || order.payment_method || "Card";
 
-  document.getElementById("customer-email")!.textContent =
-    order.billing_address.email;
+  const emailEl = document.getElementById("customer-email");
+  if (emailEl) emailEl.textContent = order.billing_address?.email ?? "";
 
   renderItems(order.items, order.totals);
   renderCoupons(order.coupons, order.totals);
