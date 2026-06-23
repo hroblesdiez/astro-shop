@@ -139,6 +139,17 @@ export const GET_BESTSELLERS = gql`
           price
           regularPrice
           salePrice
+          stockStatus
+          image {
+            sourceUrl
+            altText
+          }
+        }
+        ... on VariableProduct {
+          price
+          regularPrice
+          salePrice
+          stockStatus
           image {
             sourceUrl
             altText
