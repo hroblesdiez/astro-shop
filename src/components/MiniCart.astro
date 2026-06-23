@@ -84,6 +84,7 @@
 <script>
   import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, removeCoupon } from '../lib/cart';
   import { formatStorePrice } from '../lib/price-utils';
+  import { rewriteImageUrl } from '../lib/image';
 
   let lastActiveElement;
 
@@ -120,7 +121,7 @@
 
     // Populate lines
     container.innerHTML = cart.items.map((item) => {
-      const img = item.images?.[0]?.thumbnail || '/placeholder-thumb.png';
+      const img = rewriteImageUrl(item.images?.[0]?.thumbnail) || '/placeholder-thumb.png';
       const variationsHtml = item.variation && item.variation.length > 0
         ? `<p class="text-xs text-neutral-500 mt-0.5">${item.variation.map(v => `${v.attribute}: ${v.value}`).join(', ')}</p>`
         : '';

@@ -1,0 +1,4 @@
+[[redirects]]
+from = "/api/media/*"
+to = "http://138.2.172.187/:splat"
+status = 200

@@ -1,4 +1,6 @@
 ---
+import { rewriteImageUrl } from '../lib/image';
+
 interface Props {
   databaseId: number;
   name: string;
@@ -21,7 +23,7 @@ const { name, slug, price, regularPrice, salePrice, image, isVariable = false, i
   <a href={`/products/${slug}`} class="overflow-hidden aspect-square bg-(--color-primary)">
     {image ? (
       <img
-        src={image.sourceUrl}
+        src={rewriteImageUrl(image.sourceUrl)}
         alt={image.altText || name}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         loading="lazy"
@@ -63,7 +65,7 @@ const { name, slug, price, regularPrice, salePrice, image, isVariable = false, i
       data-product-slug={slug}
       data-product-name={name}
       data-product-price={price}
-      data-product-image={image?.sourceUrl}
+      data-product-image={rewriteImageUrl(image?.sourceUrl)}
       data-is-variable={isVariable ? 'true' : 'false'}
       data-is-in-stock={isInStock ? 'true' : 'false'}
     >

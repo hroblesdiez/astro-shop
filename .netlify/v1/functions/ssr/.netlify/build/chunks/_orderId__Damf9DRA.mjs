@@ -1,0 +1,34 @@
+import { t as __exportAll } from "./chunk_BBjsoOtd.mjs";
+import { T as createComponent, a as renderComponent, f as renderTemplate, g as maybeRenderHead, n as renderScript, w as createAstro, y as defineScriptVars } from "./server_CK2A4uq5.mjs";
+import "./compiler_Vjjohpm7.mjs";
+import { t as $$Layout } from "./Layout_BXGPCtAs.mjs";
+//#region src/pages/checkout/confirmation/[orderId].astro
+var _orderId__exports = /* @__PURE__ */ __exportAll({
+	default: () => $$OrderId,
+	file: () => $$file,
+	url: () => $$url
+});
+createAstro("https://astro-woo.netlify.app");
+var $$OrderId = createComponent(($$result, $$props, $$slots) => {
+	const Astro = $$result.createAstro($$props, $$slots);
+	Astro.self = $$OrderId;
+	const { orderId } = Astro.params;
+	if (!orderId || isNaN(parseInt(orderId, 10))) return Astro.redirect("/");
+	const cleanOrderId = parseInt(orderId, 10);
+	return renderTemplate`${renderComponent($$result, "Layout", $$Layout, {
+		"title": "Order Confirmed",
+		"description": "Your order has been confirmed",
+		"type": "website"
+	}, { "default": ($$result) => renderTemplate`
+  ${maybeRenderHead($$result)}<div class="max-w-4xl mx-auto px-4 py-12" id="confirmation-wrapper"><div id="loading" class="text-center py-12"><div class="inline-block"><div class="w-8 h-8 border-4 border-[var(--color-border)] border-t-[var(--color-btn-cta)] rounded-full animate-spin"></div></div><p class="text-[var(--color-text-muted)] mt-4">Loading your order...</p></div><div id="confirmation-content" class="hidden"><!-- Header --><div class="text-center mb-12"><div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg></div><h1 class="font-heading text-4xl text-[var(--color-text-base)] mb-2">Thank You!</h1><p class="text-lg text-[var(--color-text-muted)] mb-6">Your order has been confirmed.</p><p class="font-heading text-2xl text-[var(--color-text-base)]">Order #<span id="order-number"></span></p></div><!-- Order Summary --><div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6"><p class="text-sm text-[var(--color-text-muted)] mb-1">Status</p><p id="order-status" class="font-heading text-xl text-[var(--color-text-base)]">—</p></div><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6"><p class="text-sm text-[var(--color-text-muted)] mb-1">Order Date</p><p id="order-date" class="font-heading text-xl text-[var(--color-text-base)]">—</p></div><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6"><p class="text-sm text-[var(--color-text-muted)] mb-1">Payment Method</p><p id="payment-method" class="font-heading text-xl text-[var(--color-text-base)]">—</p></div></div><!-- Items Section --><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8 mb-8"><h2 class="font-heading text-2xl text-[var(--color-text-base)] mb-6">Order Items</h2><div id="items-container" class="space-y-4"><!-- Items rendered via JS --></div></div><!-- Coupons Section (if any) --><div id="coupons-section" class="hidden bg-[var(--color-primary)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 mb-8"><h3 class="font-heading text-lg text-[var(--color-text-base)] mb-4">Applied Discounts</h3><div id="coupons-container" class="space-y-2"><!-- Coupons rendered via JS --></div></div><!-- Order Totals --><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8 mb-8"><h3 class="font-heading text-lg text-[var(--color-text-base)] mb-6">Order Total</h3><div class="space-y-3"><div class="flex justify-between text-[var(--color-text-muted)]"><span>Subtotal</span><span id="subtotal">—</span></div><div id="shipping-row" class="flex justify-between text-[var(--color-text-muted)]"><span>Shipping</span><span id="shipping">—</span></div><div id="tax-row" class="flex justify-between text-[var(--color-text-muted)]"><span>Tax</span><span id="tax">—</span></div><div id="discount-row" class="hidden flex justify-between text-red-600"><span>Discount</span><span id="discount">—</span></div><div class="border-t border-[var(--color-border)] pt-3 flex justify-between font-heading text-lg text-[var(--color-text-base)]"><span>Total</span><span id="total">—</span></div></div></div><!-- Billing Address --><div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8"><h3 class="font-heading text-lg text-[var(--color-text-base)] mb-4">Billing Address</h3><address id="billing-address" class="text-[var(--color-text-muted)] not-italic space-y-1"><!-- Rendered via JS --></address></div><div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8"><h3 class="font-heading text-lg text-[var(--color-text-base)] mb-4">Shipping Address</h3><address id="shipping-address" class="text-[var(--color-text-muted)] not-italic space-y-1"><!-- Rendered via JS --></address></div></div><!-- CTA --><a href="/products" class="inline-block w-full px-8 py-4 bg-[var(--color-btn-cta)] text-white font-medium text-center rounded-[var(--radius-md)] hover:brightness-95 active:brightness-90 transition-all duration-200">Continue Shopping</a></div><div id="error-content" class="hidden"><div class="bg-red-50 border border-red-200 rounded-[var(--radius-lg)] p-8 text-center"><h2 class="font-heading text-2xl text-red-700 mb-2">Order Not Found</h2><p class="text-red-600 mb-6" id="error-message">We couldn't load your order. Please check the order number and try again.</p><a href="/checkout" class="inline-block px-6 py-2 bg-[var(--color-btn-cta)] text-white font-medium rounded-[var(--radius-md)] hover:brightness-95 transition-all">Back to Checkout</a></div></div></div>
+` })}<script>(function(){${defineScriptVars({ cleanOrderId })}
+  window.cleanOrderId = cleanOrderId;
+})();<\/script>${renderScript($$result, "/home/humberto/projects/astro-woo/frontend/src/pages/checkout/confirmation/[orderId].astro?astro&type=script&index=0&lang.ts")}`;
+}, "/home/humberto/projects/astro-woo/frontend/src/pages/checkout/confirmation/[orderId].astro", void 0);
+var $$file = "/home/humberto/projects/astro-woo/frontend/src/pages/checkout/confirmation/[orderId].astro";
+var $$url = "/checkout/confirmation/[orderId]";
+//#endregion
+//#region \0virtual:astro:page:src/pages/checkout/confirmation/[orderId]@_@astro
+var page = () => _orderId__exports;
+//#endregion
+export { page };

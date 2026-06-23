@@ -1,0 +1,25 @@
+import { t as __exportAll } from "./chunk_BBjsoOtd.mjs";
+import { T as createComponent, a as renderComponent, f as renderTemplate, g as maybeRenderHead } from "./server_CK2A4uq5.mjs";
+import "./compiler_Vjjohpm7.mjs";
+import { t as $$Layout } from "./Layout_BXGPCtAs.mjs";
+//#region src/pages/shipping.astro
+var shipping_exports = /* @__PURE__ */ __exportAll({
+	default: () => $$Shipping,
+	file: () => $$file,
+	url: () => $$url
+});
+var $$Shipping = createComponent(($$result, $$props, $$slots) => {
+	return renderTemplate`${renderComponent($$result, "Layout", $$Layout, {
+		"title": "Shipping Information",
+		"description": "Learn about our free shipping policy and delivery details."
+	}, { "default": ($$result) => renderTemplate`
+  ${maybeRenderHead($$result)}<div class="max-w-4xl mx-auto px-4 py-16"><div class="text-center mb-12"><h1 class="font-(--font-heading) text-4xl text-(--color-text-base) mb-3">Shipping Information</h1><p class="text-(--color-text-muted) text-sm max-w-lg mx-auto">We make shipping simple and affordable — always free, no minimum required.</p></div><div class="space-y-6"><div class="bg-(--color-surface) border border-(--color-border) rounded-[var(--radius-lg)] p-8"><h2 class="font-(--font-heading) text-2xl text-(--color-text-base) mb-3">Free Shipping — Always</h2><p class="text-(--color-text-muted) text-sm leading-relaxed">Every order ships free of charge, regardless of size or total amount. Whether you are buying a single accessory or a full wardrobe, you will never pay for shipping. We believe in transparent pricing with no hidden fees at checkout.</p></div><div class="bg-(--color-surface) border border-(--color-border) rounded-[var(--radius-lg)] p-8"><h2 class="font-(--font-heading) text-2xl text-(--color-text-base) mb-3">Processing Time</h2><p class="text-(--color-text-muted) text-sm leading-relaxed">Orders are processed within 1–2 business days after payment confirmation. During peak seasons or promotional periods, processing may take an additional day. You will receive a confirmation email once your order ships.</p></div><div class="bg-(--color-surface) border border-(--color-border) rounded-[var(--radius-lg)] p-8"><h2 class="font-(--font-heading) text-2xl text-(--color-text-base) mb-3">Delivery Times</h2><div class="space-y-4"><div class="border-b border-(--color-border) pb-4"><h3 class="font-medium text-(--color-text-base) mb-1">Domestic</h3><p class="text-(--color-text-muted) text-sm">3–5 business days after processing</p></div><div><h3 class="font-medium text-(--color-text-base) mb-1">International</h3><p class="text-(--color-text-muted) text-sm">7–14 business days after processing</p></div></div></div><div class="bg-(--color-surface) border border-(--color-border) rounded-[var(--radius-lg)] p-8"><h2 class="font-(--font-heading) text-2xl text-(--color-text-base) mb-3">Tracking</h2><p class="text-(--color-text-muted) text-sm leading-relaxed">All orders include tracking at no extra cost. Once your order ships, you will receive an email with a tracking number and a link to monitor your package in real time.</p></div></div></div>
+` })}`;
+}, "/home/humberto/projects/astro-woo/frontend/src/pages/shipping.astro", void 0);
+var $$file = "/home/humberto/projects/astro-woo/frontend/src/pages/shipping.astro";
+var $$url = "/shipping";
+//#endregion
+//#region \0virtual:astro:page:src/pages/shipping@_@astro
+var page = () => shipping_exports;
+//#endregion
+export { page };

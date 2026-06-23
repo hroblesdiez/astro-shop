@@ -3,6 +3,7 @@ import {
   clearOrderConfirmation,
   clearCheckoutState,
 } from "../lib/checkout-state";
+import { rewriteImageUrl } from "./image";
 
 async function initConfirmation(cleanOrderId: number) {
   const confirmation = getOrderConfirmation();
@@ -97,7 +98,7 @@ function renderItems(items: any[], totals: any) {
       <div class="w-20 h-20 bg-[var(--color-background)] rounded-[var(--radius-md)] flex-shrink-0">
         ${
           item.images?.[0]?.src
-            ? `<img src="${item.images[0].src}" alt="${item.name}" class="w-full h-full object-cover rounded-[var(--radius-md)]">`
+            ? `<img src="${rewriteImageUrl(item.images[0].src)}" alt="${item.name}" class="w-full h-full object-cover rounded-[var(--radius-md)]">`
             : '<div class="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">No image</div>'
         }
       </div>

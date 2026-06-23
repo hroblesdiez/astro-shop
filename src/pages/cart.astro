@@ -117,6 +117,7 @@ import Layout from '../layouts/Layout.astro';
   import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, applyCoupon, removeCoupon } from '../lib/cart';
   import { formatStorePrice } from '../lib/price-utils';
   import { initializeCountryFromGeolocation, getStoredBillingCountry } from '../lib/country-sync';
+  import { rewriteImageUrl } from '../lib/image';
 
   const loadingEl = document.getElementById('cart-page-loading');
   const emptyEl = document.getElementById('cart-page-empty');
@@ -152,7 +153,7 @@ import Layout from '../layouts/Layout.astro';
     // Build line items
     if (itemsList) {
       itemsList.innerHTML = cart.items.map((item) => {
-        const img = item.images?.[0]?.src || '/placeholder-img.png';
+        const img = rewriteImageUrl(item.images?.[0]?.src) || '/placeholder-img.png';
         const variationsHtml = item.variation && item.variation.length > 0
           ? `<div class="text-xs text-neutral-500 mt-1 flex flex-wrap gap-x-2">
                ${item.variation.map(v => `<span><strong>${v.attribute}:</strong> ${v.value}</span>`).join('')}

@@ -1,4 +1,6 @@
 ---
+import { rewriteImageUrl } from '../../lib/image';
+
 interface Props {
   image?: {
     sourceUrl: string;
@@ -12,7 +14,7 @@ const { image } = Astro.props;
 <div>
   <img
     id="product-image"
-    src={image?.sourceUrl}
+    src={rewriteImageUrl(image?.sourceUrl)}
     alt={image?.altText || ''}
     class="w-full border border-(--color-border)"
     width="800"

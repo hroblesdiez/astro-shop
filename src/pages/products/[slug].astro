@@ -6,6 +6,7 @@ import ProductVariationSelector from '../../components/product/ProductVariationS
 import QuantitySelector from '../../components/product/QuantitySelector.astro';
 import PriceSummary from '../../components/product/PriceSummary.astro';
 import ProductDescription from '../../components/product/ProductDescription.astro';
+import { rewriteImageUrl } from '../../lib/image';
 import { getProductBySlug } from '../../lib/products';
 
 const { slug } = Astro.params;
@@ -39,7 +40,7 @@ const jsonLd = {
   '@type': 'Product',
   name: product.name,
   description: stripHtml(product.shortDescription),
-  image: product.image?.sourceUrl,
+  image: rewriteImageUrl(product.image?.sourceUrl),
   ...(product.sku && { sku: product.sku }),
   offers: {
     '@type': 'Offer',
@@ -61,7 +62,7 @@ const variationData = variations.map((variation: any) => ({
   salePrice: variation.salePrice,
   stockStatus: variation.stockStatus,
   is_in_stock: variation.stockStatus === 'IN_STOCK',
-  image: variation.image?.sourceUrl,
+  image: rewriteImageUrl(variation.image?.sourceUrl),
   attributes: Object.fromEntries(
     variation.attributes.nodes.map((attr: any) => [
       attr.name,
@@ -110,7 +111,7 @@ const productIsInStock = product.stockStatus === 'IN_STOCK';
 <Layout
   title={product.name}
   description={stripHtml(product.shortDescription)}
-  image={product.image?.sourceUrl}
+  image={rewriteImageUrl(product.image?.sourceUrl)}
   type="product"
 >
   <div class="max-w-7xl mx-auto px-4 py-12">
