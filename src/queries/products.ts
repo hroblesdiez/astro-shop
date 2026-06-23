@@ -186,6 +186,22 @@ export const GET_PRODUCTS_BY_CATEGORY = gql`
             altText
           }
         }
+        ... on VariableProduct {
+          price
+          regularPrice
+          salePrice
+          stockStatus
+          image {
+            sourceUrl
+            altText
+          }
+          attributes {
+            nodes {
+              name
+              options
+            }
+          }
+        }
       }
     }
   }

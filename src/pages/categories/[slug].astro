@@ -1,0 +1,59 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { getCategories, getProductsByCategory } from '../../lib/products';
+
+const { slug } = Astro.params;
+
+const allCategories = await getCategories();
+const category = allCategories.find((c: any) => c.slug === slug);
+
+if (!category) {
+  return Astro.redirect('/404');
+}
+
+const { nodes: products, pageInfo } = await getProductsByCategory(slug, 100);
+---
+
+<Layout title={`${category.name} - Products`}>
+  <div class="max-w-7xl mx-auto px-4 py-12">
+
+    <div class="mb-8 flex items-center justify-between">
+      <h1 class="font-(--font-heading) text-4xl text-(--color-text-base)">{category.name}</h1>
+      <p class="text-(--color-text-muted) text-sm">{products.length} results</p>
+    </div>
+
+    {products.length > 0 ? (
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {products.map((p: any) => {
+          let isInStock = true;
+          if (typeof p.is_in_stock === 'boolean') {
+            isInStock = p.is_in_stock;
+          } else if (typeof p.stockStatus === 'string') {
+            isInStock = p.stockStatus === 'IN STOCK' || p.stockStatus === 'IN_STOCK';
+          }
+
+          return (
+            <ProductCard
+              databaseId={p.databaseId}
+              name={p.name}
+              slug={p.slug}
+              price={p.price}
+              regularPrice={p.regularPrice}
+              salePrice={p.salePrice}
+              image={p.image}
+              isVariable={Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0}
+              isInStock={isInStock}
+            />
+          );
+        })}
+      </div>
+    ) : (
+      <div class="text-center py-24">
+        <p class="text-(--color-text-muted) text-lg">No products found in this category.</p>
+        <a href="/products" class="mt-4 inline-block text-sm text-(--color-btn-cta) hover:underline">Browse all products</a>
+      </div>
+    )}
+
+  </div>
+</Layout>
