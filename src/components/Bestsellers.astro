@@ -18,7 +18,7 @@ const { products } = Astro.props;
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-      {products.map((product) => (
+      {products.map((product: any) => (
         <ProductCard
           databaseId={product.databaseId}
           name={product.name}
@@ -27,6 +27,7 @@ const { products } = Astro.props;
           regularPrice={product.regularPrice}
           salePrice={product.salePrice}
           image={product.image}
+          isVariable={Array.isArray(product.attributes?.nodes) && product.attributes.nodes.length > 0}
         />
       ))}
     </div>

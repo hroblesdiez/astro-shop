@@ -154,6 +154,12 @@ export const GET_BESTSELLERS = gql`
             sourceUrl
             altText
           }
+          attributes {
+            nodes {
+              name
+              options
+            }
+          }
         }
       }
     }
