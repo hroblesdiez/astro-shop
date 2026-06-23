@@ -1,14 +1,10 @@
 ---
 const shopLinks = [
   { href: '/products', label: 'All Products' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/products?sort=bestsellers', label: 'Bestsellers' },
-  { href: '/products?sort=new', label: 'New Arrivals' },
+  { href: '/#bestsellers', label: 'Bestsellers' },
 ];
 
 const companyLinks = [
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
   { href: '/shipping', label: 'Shipping' },
   { href: '/returns', label: 'Returns' },
 ];
@@ -38,7 +34,7 @@ const companyLinks = [
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+  <div class="max-w-7xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-3 gap-8">
     <div class="col-span-2 md:col-span-1">
       <a href="/" class="font-(--font-heading) text-2xl text-(--color-text-base)">Astro Shop</a>
       <p class="text-(--color-text-muted) text-sm mt-3 leading-relaxed max-w-xs">
@@ -72,21 +68,6 @@ const companyLinks = [
       </ul>
     </div>
 
-    <div>
-      <h4 class="text-xs font-semibold tracking-widest uppercase text-(--color-text-base) mb-4">Portfolio</h4>
-      <ul class="flex flex-col gap-2">
-        <li>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-muted) hover:text-(--color-text-base) transition-colors">
-            GitHub
-          </a>
-        </li>
-        <li>
-          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="text-sm text-(--color-text-muted) hover:text-(--color-text-base) transition-colors">
-            LinkedIn
-          </a>
-        </li>
-      </ul>
-    </div>
   </div>
 
   <div class="border-t border-(--color-border)">
