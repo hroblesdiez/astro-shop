@@ -57,20 +57,86 @@ const categories = await getCategories();
 
     <div class="flex items-center gap-4">
       <button
+        id="mobile-menu-toggle"
+        class="md:hidden text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer p-1"
+        aria-label="Toggle menu"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <button
         id="cart-button"
-        class="relative text-sm font-medium hover:text-neutral-600 transition-colors cursor-pointer"
+        class="relative pr-4 text-sm font-medium hover:text-neutral-600 transition-colors cursor-pointer"
         aria-label="Open cart"
       >
         Cart
         <span
           id="cart-count"
-          class="absolute -top-2 -right-4 bg-neutral-900 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold"
+          class="absolute -top-2 right-0 bg-neutral-900 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold"
         >
           0
         </span>
       </button>
     </div>
   </nav>
+
+  <!-- Mobile menu panel -->
+  <div
+    id="mobile-menu"
+    class="fixed inset-0 z-50 md:hidden invisible opacity-0 transition-all duration-300"
+    data-open="false"
+  >
+    <div id="mobile-backdrop" class="absolute inset-0 bg-black/30"></div>
+    <div class="relative ml-auto w-72 h-full bg-(--color-surface) shadow-xl translate-x-full transition-transform duration-300">
+      <div class="flex justify-end p-4">
+        <button
+          id="mobile-close"
+          class="text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer p-1"
+          aria-label="Close menu"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <ul class="px-6 space-y-1">
+        <li>
+          <a href="/" class="block py-3 text-sm text-neutral-700 hover:text-(--color-text-base) font-medium border-b border-(--color-border)">
+            Home
+          </a>
+        </li>
+        <li>
+          <a href="/products" class="block py-3 text-sm text-neutral-700 hover:text-(--color-text-base) font-medium border-b border-(--color-border)">
+            Shop
+          </a>
+        </li>
+        <li>
+          <button
+            id="mobile-categories-toggle"
+            class="w-full flex items-center justify-between py-3 text-sm text-neutral-700 hover:text-(--color-text-base) font-medium border-b border-(--color-border) cursor-pointer"
+          >
+            Categories
+            <svg id="mobile-categories-arrow" class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <ul id="mobile-categories-list" class="hidden pl-4 pb-2 space-y-1">
+            {categories.map((cat: any) => (
+              <li>
+                <a
+                  href={`/categories/${cat.slug}`}
+                  class="block py-2 text-sm text-neutral-600 hover:text-(--color-text-base) transition-colors"
+                >
+                  {cat.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
 </header>
 
 <!-- Global Shell Inclusion of the Slide-over Panel -->
@@ -137,13 +203,79 @@ const categories = await getCategories();
     });
   }
 
+  function initMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const backdrop = document.getElementById('mobile-backdrop');
+    const toggleBtn = document.getElementById('mobile-menu-toggle');
+    const closeBtn = document.getElementById('mobile-close');
+    const catToggle = document.getElementById('mobile-categories-toggle');
+    const catList = document.getElementById('mobile-categories-list');
+    const catArrow = document.getElementById('mobile-categories-arrow');
+    const panel = menu?.querySelector('.ml-auto');
+
+    if (!menu || !toggleBtn || !closeBtn || !panel) return;
+
+    const m = menu;
+    const p = panel;
+
+    function open() {
+      m.dataset.open = 'true';
+      m.classList.remove('invisible', 'opacity-0');
+      m.classList.add('visible', 'opacity-100');
+      p.classList.remove('translate-x-full');
+      p.classList.add('translate-x-0');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+      m.dataset.open = 'false';
+      p.classList.remove('translate-x-0');
+      p.classList.add('translate-x-full');
+      m.classList.remove('visible', 'opacity-100');
+      m.classList.add('invisible', 'opacity-0');
+      document.body.style.overflow = '';
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (m.dataset.open === 'true') {
+        close();
+      } else {
+        open();
+      }
+    });
+
+    closeBtn.addEventListener('click', close);
+    if (backdrop) backdrop.addEventListener('click', close);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && m.dataset.open === 'true') close();
+    });
+
+    // Close when a nav link is clicked
+    m.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', close);
+    });
+
+    // Mobile categories toggle
+    if (catToggle && catList && catArrow) {
+      catToggle.addEventListener('click', () => {
+        const expanded = catToggle.dataset.expanded === 'true';
+        catToggle.dataset.expanded = expanded ? 'false' : 'true';
+        catList.classList.toggle('hidden');
+        catArrow.classList.toggle('rotate-180');
+      });
+    }
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       initNavbarCart();
       initCategoriesDropdown();
+      initMobileMenu();
     });
   } else {
     initNavbarCart();
     initCategoriesDropdown();
+    initMobileMenu();
   }
 </script>
