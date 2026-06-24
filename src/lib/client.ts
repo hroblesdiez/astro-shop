@@ -7,7 +7,7 @@ if (!endpoint) {
 }
 
 export const client = new GraphQLClient(endpoint, {
-  timeout: 15000,
+  timeout: 7000,
 });
 
 const cache = new Map<string, { data: unknown; timestamp: number }>();

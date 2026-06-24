@@ -21,19 +21,32 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getBestsellers(first = 8) {
-  const tagData = await cachedRequest<any>(GET_TAG_ID, { slug: "bestseller" });
-  const tagId = tagData?.productTag?.databaseId;
-  if (!tagId) return [];
-  const data = await cachedRequest<any>(GET_BESTSELLERS, {
-    tagIn: [tagId],
-    first,
-  });
-  return data.products?.nodes ?? [];
+  try {
+    const tagData = await cachedRequest<any>(GET_TAG_ID, { slug: "bestseller" });
+    const tagId = tagData?.productTag?.databaseId;
+    if (!tagId) {
+      console.error("[getBestsellers] Tag 'bestseller' not found", tagData);
+      return [];
+    }
+    const data = await cachedRequest<any>(GET_BESTSELLERS, {
+      tagIn: [tagId],
+      first,
+    });
+    return data.products?.nodes ?? [];
+  } catch (err) {
+    console.error("[getBestsellers] Error:", err);
+    return [];
+  }
 }
 
 export async function getTestimonials() {
-  const data = await cachedRequest<any>(GET_TESTIMONIALS);
-  return data.testimonials.nodes;
+  try {
+    const data = await cachedRequest<any>(GET_TESTIMONIALS);
+    return data.testimonials.nodes;
+  } catch (err) {
+    console.error("[getTestimonials] Error:", err);
+    return [];
+  }
 }
 
 export async function getCategories() {

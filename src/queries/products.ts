@@ -121,8 +121,8 @@ export const GET_TESTIMONIALS = gql`
 `;
 
 export const GET_TAG_ID = gql`
-  query GetTagId($slug: String!) {
-    productTag(where: { slug: [$slug] }) {
+  query GetTagId($slug: ID!) {
+    productTag(id: $slug, idType: SLUG) {
       databaseId
     }
   }

@@ -11,10 +11,15 @@ Astro.response.headers.set(
   'public, max-age=0, s-maxage=300, stale-while-revalidate=60, stale-if-error=86400',
 );
 
-const [products, testimonials] = await Promise.all([
-  getBestsellers(4),
-  getTestimonials(),
-]);
+let products: any[] = [];
+let testimonials: any[] = [];
+try {
+  const results = await Promise.all([getBestsellers(4), getTestimonials()]);
+  products = results[0];
+  testimonials = results[1];
+} catch (err) {
+  console.error("[index.astro] Error fetching homepage data:", err);
+}
 ---
 
 <Layout title="Home">
