@@ -4,6 +4,7 @@ import {
   GET_PRODUCT_BY_SLUG,
   GET_TESTIMONIALS,
   GET_BESTSELLERS,
+  GET_TAG_ID,
   GET_CATEGORIES,
   GET_PRODUCTS_BY_CATEGORY,
   GET_PRODUCTS_FILTERED,
@@ -20,7 +21,13 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getBestsellers(first = 8) {
-  const data = await cachedRequest<any>(GET_BESTSELLERS, { first });
+  const tagData = await cachedRequest<any>(GET_TAG_ID, { slug: "bestseller" });
+  const tagId = tagData?.productTag?.databaseId;
+  if (!tagId) return [];
+  const data = await cachedRequest<any>(GET_BESTSELLERS, {
+    tagIn: [tagId],
+    first,
+  });
   return data.products?.nodes ?? [];
 }
 
