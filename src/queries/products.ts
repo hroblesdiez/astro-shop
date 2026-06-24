@@ -129,7 +129,7 @@ export const GET_TAG_ID = gql`
 `;
 
 export const GET_BESTSELLERS = gql`
-  query GetBestsellers($first: Int = 8, $tagIn: [Int]) {
+  query GetBestsellers($first: Int = 8, $tagIn: [String]) {
     products(where: { tagIn: $tagIn }, first: $first) {
       nodes {
         databaseId

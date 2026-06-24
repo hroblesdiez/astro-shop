@@ -29,7 +29,7 @@ export async function getBestsellers(first = 8) {
       return [];
     }
     const data = await cachedRequest<any>(GET_BESTSELLERS, {
-      tagIn: [tagId],
+      tagIn: [String(tagId)],
       first,
     });
     return data.products?.nodes ?? [];
