@@ -120,17 +120,9 @@ export const GET_TESTIMONIALS = gql`
   }
 `;
 
-export const GET_TAG_ID = gql`
-  query GetTagId($slug: ID!) {
-    productTag(id: $slug, idType: SLUG) {
-      databaseId
-    }
-  }
-`;
-
 export const GET_BESTSELLERS = gql`
-  query GetBestsellers($first: Int = 8, $tagIn: [String]) {
-    products(where: { tagIn: $tagIn }, first: $first) {
+  query GetBestsellers($first: Int = 8) {
+    products(where: { tagIn: ["bestseller"] }, first: $first) {
       nodes {
         databaseId
         name
