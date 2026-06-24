@@ -41,14 +41,20 @@ const categories = [
           href={`/categories/${slug}`}
           class="group relative overflow-hidden aspect-square bg-(--color-surface)"
         >
-          <img
-            src={image}
-            alt={name}
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-            width="300"
-            height="300"
-          />
+          <picture>
+            <source
+              srcset={image.replace('.jpg', '.webp')}
+              type="image/webp"
+            />
+            <img
+              src={image}
+              alt={name}
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+              width="300"
+              height="300"
+            />
+          </picture>
           <div class="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
           <div class="absolute inset-0 flex flex-col justify-end p-3">
             <p class="text-white text-xs font-medium leading-tight">{name}</p>

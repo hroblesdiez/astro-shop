@@ -1,8 +1,7 @@
-import { client } from "./client";
+import { cachedRequest } from "./client";
 import {
   GET_PRODUCTS,
   GET_PRODUCT_BY_SLUG,
-  GET_TAG_ID,
   GET_TESTIMONIALS,
   GET_BESTSELLERS,
   GET_CATEGORIES,
@@ -11,36 +10,27 @@ import {
 } from "../queries/products";
 
 export async function getProducts(first = 12, after?: string) {
-  const data = await client.request<any>(GET_PRODUCTS, { first, after });
+  const data = await cachedRequest<any>(GET_PRODUCTS, { first, after });
   return data.products;
 }
 
 export async function getProductBySlug(slug: string) {
-  const data = await client.request<any>(GET_PRODUCT_BY_SLUG, { slug });
+  const data = await cachedRequest<any>(GET_PRODUCT_BY_SLUG, { slug });
   return data.product;
 }
 
 export async function getBestsellers(first = 8) {
-  const tagData = await client.request<any>(GET_TAG_ID, { slug: "bestseller" });
-
-  const tagId = tagData?.productTag?.databaseId;
-
-  if (!tagId) return [];
-  const data = await client.request<any>(GET_BESTSELLERS, {
-    tagIn: [tagId],
-    first,
-  });
-
-  return data.products.nodes;
+  const data = await cachedRequest<any>(GET_BESTSELLERS, { first });
+  return data.products?.nodes ?? [];
 }
 
 export async function getTestimonials() {
-  const data = await client.request<any>(GET_TESTIMONIALS);
+  const data = await cachedRequest<any>(GET_TESTIMONIALS);
   return data.testimonials.nodes;
 }
 
 export async function getCategories() {
-  const data = await client.request<any>(GET_CATEGORIES);
+  const data = await cachedRequest<any>(GET_CATEGORIES);
   return data.productCategories.nodes;
 }
 
@@ -49,7 +39,7 @@ export async function getProductsByCategory(
   first = 12,
   after?: string,
 ) {
-  const data = await client.request<any>(GET_PRODUCTS_BY_CATEGORY, {
+  const data = await cachedRequest<any>(GET_PRODUCTS_BY_CATEGORY, {
     category,
     first,
     after,
@@ -72,7 +62,7 @@ export async function getProductsFiltered({
   maxPrice?: number;
   orderby?: { field: string; order: string }[];
 }) {
-  const data = await client.request<any>(GET_PRODUCTS_FILTERED, {
+  const data = await cachedRequest<any>(GET_PRODUCTS_FILTERED, {
     first,
     after: after ?? null,
     category: category ?? null,
@@ -83,7 +73,6 @@ export async function getProductsFiltered({
   return data.products;
 }
 
-// Categories that show size filter
 export const CATS_WITH_SIZE = new Set([
   "mens-shirts",
   "tops",
@@ -92,7 +81,6 @@ export const CATS_WITH_SIZE = new Set([
   "womens-shoes",
 ]);
 
-// Categories that show color filter
 export const CATS_WITH_COLOR = new Set(["womens-bags"]);
 
 export const SIZE_CLOTHING = ["XS", "S", "M", "L", "XL", "XXL"];

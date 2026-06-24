@@ -26,14 +26,27 @@
     </div>
 
     <div class="relative flex justify-center items-center">
-      <img
-        src="/images/categories/hero.jpg"
-        alt="Shop our latest collection"
-        class="w-full max-w-lg object-cover rounded-sm shadow-lg"
-        loading="eager"
-        width="600"
-        height="700"
-      />
+      <picture>
+        <source
+          srcset="/images/categories/hero-400w.webp 400w, /images/categories/hero-800w.webp 800w, /images/categories/hero-1200w.webp 1200w"
+          sizes="(max-width: 768px) 100vw, 50vw"
+          type="image/webp"
+        />
+        <source
+          srcset="/images/categories/hero-400w.jpg 400w, /images/categories/hero-800w.jpg 800w, /images/categories/hero-1200w.jpg 1200w"
+          sizes="(max-width: 768px) 100vw, 50vw"
+          type="image/jpeg"
+        />
+        <img
+          src="/images/categories/hero-800w.jpg"
+          alt="Shop our latest collection"
+          class="w-full max-w-lg object-cover rounded-sm shadow-lg"
+          loading="eager"
+          fetchpriority="high"
+          width="600"
+          height="700"
+        />
+      </picture>
     </div>
 
   </div>

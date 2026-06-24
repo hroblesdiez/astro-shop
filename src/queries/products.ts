@@ -104,14 +104,6 @@ export const GET_PRODUCT_BY_SLUG = gql`
   }
 `;
 
-export const GET_TAG_ID = gql`
-  query GetTagId($slug: ID!) {
-    productTag(id: $slug, idType: SLUG) {
-      databaseId
-    }
-  }
-`;
-
 export const GET_TESTIMONIALS = gql`
   query GetTestimonials {
     testimonials {
@@ -130,7 +122,7 @@ export const GET_TESTIMONIALS = gql`
 
 export const GET_BESTSELLERS = gql`
   query GetBestsellers($first: Int = 8) {
-    products(where: { tagIn: ["bestseller"] }, first: $first) {
+    products(where: { tagSlugIn: ["bestseller"] }, first: $first) {
       nodes {
         databaseId
         name

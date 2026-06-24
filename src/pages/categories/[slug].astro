@@ -3,6 +3,11 @@ import Layout from '../../layouts/Layout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import { getCategories, getProductsByCategory } from '../../lib/products';
 
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=0, s-maxage=300, stale-while-revalidate=60, stale-if-error=86400',
+);
+
 const { slug } = Astro.params;
 
 const allCategories = await getCategories();
