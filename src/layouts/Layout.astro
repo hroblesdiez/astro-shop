@@ -23,7 +23,6 @@ const canonicalURL = Astro.site
 
 const fullTitle = `${title} | Astro Shop`;
 
-const umamiUrl = import.meta.env.PUBLIC_UMAMI_URL;
 const umamiWebsiteId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
 
 const ogImage = Astro.site
@@ -83,10 +82,10 @@ const ogImage = Astro.site
       import '../lib/vitals';
     </script>
 
-    {umamiUrl && umamiWebsiteId && (
+    {umamiWebsiteId && (
       <script
         defer
-        src={umamiUrl + '/script.js'}
+        src="/umami/script.js"
         data-website-id={umamiWebsiteId}
       ></script>
     )}
