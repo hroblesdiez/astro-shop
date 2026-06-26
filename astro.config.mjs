@@ -13,5 +13,19 @@ export default defineConfig({
         usePolling: false,
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("graphql-request") || id.includes("graphql")) return "vendor-graphql";
+              return "vendor";
+            }
+            if (id.includes("src/lib")) return "lib";
+            if (id.includes("src/components")) return "components";
+          },
+        },
+      },
+    },
   },
 });
