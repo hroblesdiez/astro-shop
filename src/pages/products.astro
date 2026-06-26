@@ -12,7 +12,7 @@ import {
 
 Astro.response.headers.set(
   'Cache-Control',
-  'public, max-age=0, s-maxage=60, stale-while-revalidate=30, stale-if-error=86400',
+  'public, max-age=0, s-maxage=300, stale-while-revalidate=30, stale-if-error=86400',
 );
 
 const url = Astro.url;
@@ -38,7 +38,7 @@ const sortMap: Record<string, { field: string; order: string }[]> = {
 const orderby = sortMap[sortParam] ?? undefined;
 
 const [{ nodes: allProducts, pageInfo }, categories] = await Promise.all([
-  getProductsFiltered({ first: 100, after, category, minPrice, maxPrice, orderby }),
+  getProductsFiltered({ first: 24, after, category, minPrice, maxPrice, orderby }),
   getCategories(),
 ]);
 
