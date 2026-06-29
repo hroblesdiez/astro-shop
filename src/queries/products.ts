@@ -17,7 +17,7 @@ export const GET_PRODUCTS = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
         }
@@ -133,7 +133,7 @@ export const GET_BESTSELLERS = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
         }
@@ -143,7 +143,7 @@ export const GET_BESTSELLERS = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
           attributes {
@@ -191,7 +191,7 @@ export const GET_PRODUCTS_BY_CATEGORY = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
         }
@@ -201,7 +201,7 @@ export const GET_PRODUCTS_BY_CATEGORY = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
           attributes {
@@ -249,7 +249,7 @@ export const GET_PRODUCTS_FILTERED = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
         }
@@ -259,7 +259,7 @@ export const GET_PRODUCTS_FILTERED = gql`
           salePrice
           stockStatus
           image {
-            sourceUrl
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
             altText
           }
           attributes {

@@ -325,8 +325,12 @@
       closeMiniCart();
     });
 
-    // Background validation query
-    syncCart().catch(() => {});
+    // Background validation query — deferred so it doesn't block render
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => syncCart().catch(() => {}), { timeout: 3000 });
+    } else {
+      setTimeout(() => syncCart().catch(() => {}), 3000);
+    }
   }
 
   if (document.readyState === 'loading') {

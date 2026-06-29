@@ -116,7 +116,7 @@ import Layout from '../layouts/Layout.astro';
 <script>
   import { getCachedCart, syncCart, updateCartQuantity, removeFromCart, applyCoupon, removeCoupon } from '../lib/cart';
   import { formatStorePrice } from '../lib/price-utils';
-  import { initializeCountryFromGeolocation, getStoredBillingCountry } from '../lib/country-sync';
+
   import { rewriteImageUrl } from '../lib/image';
 
   const loadingEl = document.getElementById('cart-page-loading');
@@ -213,13 +213,7 @@ import Layout from '../layouts/Layout.astro';
       }
     }
 
-    // Display country code
-    const currentCountry = getStoredBillingCountry();
-    if (countryDisplayEl && currentCountry) {
-      countryDisplayEl.textContent = `Country: ${currentCountry}`;
-    }
-
-    // Handle Coupons block architectural layout
+      // Handle Coupons block architectural layout
     if (couponsContainer) {
       if (cart.coupons && cart.coupons.length > 0) {
         couponsContainer.innerHTML = cart.coupons.map((coupon) => `
@@ -294,9 +288,6 @@ import Layout from '../layouts/Layout.astro';
 
   // Setup listeners and forms
   async function initCartPage() {
-    // Initialize country from geolocation
-    await initializeCountryFromGeolocation();
-
     const currentCart = getCachedCart();
     renderCartPage(currentCart);
 

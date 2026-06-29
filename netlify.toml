@@ -14,6 +14,36 @@ for = "/returns/index.html"
 Cache-Control = "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60"
 
 [[headers]]
+for = "/_astro/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/fonts/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/favicon*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/apple-touch-icon*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/site.webmanifest"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/og-default.png"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
 for = "/api/media/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
