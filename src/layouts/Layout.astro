@@ -36,26 +36,19 @@ const ogImage = Astro.site
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="http://138.2.172.187" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-    </noscript>
-    <link
-      rel="preload"
-      as="image"
-      href="/images/categories/hero-800w.avif"
-      imagesrcset="/images/categories/hero-400w.avif 400w, /images/categories/hero-800w.avif 800w, /images/categories/hero-1200w.avif 1200w"
-      imagesizes="(max-width: 768px) 100vw, 50vw"
-      type="image/avif"
-    />
+    {
+      Astro.url.pathname === '/' && (
+        <link
+          rel="preload"
+          as="image"
+          href="/images/categories/hero-800w.avif"
+          imagesrcset="/images/categories/hero-400w.avif 400w, /images/categories/hero-800w.avif 800w, /images/categories/hero-1200w.avif 1200w"
+          imagesizes="(max-width: 768px) 100vw, 50vw"
+          type="image/avif"
+        />
+      )
+    }
 
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
