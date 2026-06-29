@@ -17,6 +17,12 @@ async function convertHero() {
   for (const { width, suffix } of sizes) {
     await sharp(hero)
       .resize(width)
+      .avif({ quality: 45 })
+      .toFile(path.join(dir, `hero-${suffix}.avif`));
+    console.log(`Created hero-${suffix}.avif`);
+
+    await sharp(hero)
+      .resize(width)
       .webp({ quality: 80 })
       .toFile(path.join(dir, `hero-${suffix}.webp`));
     console.log(`Created hero-${suffix}.webp`);
@@ -27,6 +33,11 @@ async function convertHero() {
       .toFile(path.join(dir, `hero-${suffix}.jpg`));
     console.log(`Created hero-${suffix}.jpg`);
   }
+
+  await sharp(hero)
+    .avif({ quality: 45 })
+    .toFile(path.join(dir, 'hero.avif'));
+  console.log('Created hero.avif');
 
   await sharp(hero)
     .webp({ quality: 80 })

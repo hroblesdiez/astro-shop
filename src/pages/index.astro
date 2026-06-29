@@ -6,10 +6,7 @@ import CategoryGrid from '../components/CategoryGrid.astro';
 import Testimonials from '../components/Testimonials.astro';
 import { getBestsellers, getTestimonials } from '../lib/products';
 
-Astro.response.headers.set(
-  'Cache-Control',
-  'public, max-age=0, s-maxage=300, stale-while-revalidate=60, stale-if-error=86400',
-);
+export const prerender = true;
 
 let products: any[] = [];
 let testimonials: any[] = [];

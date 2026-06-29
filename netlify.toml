@@ -1,3 +1,18 @@
+[[headers]]
+for = "/index.html"
+[headers.values]
+Cache-Control = "public, max-age=0, s-maxage=300, stale-while-revalidate=60, stale-if-error=86400"
+
+[[headers]]
+for = "/shipping/index.html"
+[headers.values]
+Cache-Control = "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60"
+
+[[headers]]
+for = "/returns/index.html"
+[headers.values]
+Cache-Control = "public, max-age=3600, s-maxage=3600, stale-while-revalidate=60"
+
 [[redirects]]
 from = "/api/media/*"
 to = "http://138.2.172.187/:splat"
