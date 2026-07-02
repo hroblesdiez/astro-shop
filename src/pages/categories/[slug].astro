@@ -10,14 +10,15 @@ Astro.response.headers.set(
 
 const { slug } = Astro.params;
 
-const allCategories = await getCategories();
+const [allCategories, { nodes: products, pageInfo }] = await Promise.all([
+  getCategories(),
+  getProductsByCategory(slug, 100),
+]);
 const category = allCategories.find((c: any) => c.slug === slug);
 
 if (!category) {
   return Astro.redirect('/404');
 }
-
-const { nodes: products, pageInfo } = await getProductsByCategory(slug, 100);
 ---
 
 <Layout title={`${category.name} - Products`}>

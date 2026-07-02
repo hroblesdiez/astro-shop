@@ -7,7 +7,10 @@ if (!endpoint) {
 }
 
 export const client = new GraphQLClient(endpoint, {
-  timeout: 7000,
+  fetch: (url, init) => {
+    const timeoutSignal = AbortSignal.timeout(30000);
+    return fetch(url, { ...init, signal: timeoutSignal });
+  },
 });
 
 const memCache = new Map<string, { data: unknown; timestamp: number }>();

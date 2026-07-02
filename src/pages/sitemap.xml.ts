@@ -11,8 +11,16 @@ export const GET: APIRoute = async ({ site }) => {
 
   let productPages: { loc: string }[] = [];
   try {
-    const result = await getProducts(1000);
-    productPages = (result.nodes ?? []).map(
+    const allProducts: { slug: string }[] = [];
+    let hasNextPage = true;
+    let after: string | undefined;
+    while (hasNextPage && allProducts.length < 500) {
+      const result = await getProducts(100, after);
+      allProducts.push(...(result.nodes ?? []));
+      hasNextPage = result.pageInfo?.hasNextPage ?? false;
+      after = result.pageInfo?.endCursor;
+    }
+    productPages = allProducts.map(
       (p: { slug: string }) => ({ loc: `/products/${p.slug}` }),
     );
   } catch {
