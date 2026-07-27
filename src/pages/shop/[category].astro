@@ -1,0 +1,361 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import {
+  getCategories,
+  getAllProductsByCategory,
+  CATS_WITH_SIZE,
+  CATS_WITH_COLOR,
+  getSizesForCategory,
+  COLORS,
+} from '../../lib/products';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const categories = await getCategories();
+
+  const results = [];
+  for (const cat of categories) {
+    const products = await getAllProductsByCategory(cat.slug);
+    results.push({
+      params: { category: cat.slug },
+      props: { category: cat, products },
+    });
+  }
+
+  return results;
+}
+
+const { category, products: allProducts } = Astro.props;
+const slug = category.slug;
+
+const showSizeFilter = CATS_WITH_SIZE.has(slug);
+const showColorFilter = CATS_WITH_COLOR.has(slug);
+const sizes = getSizesForCategory(slug);
+
+const productsJSON = JSON.stringify(
+  allProducts.map((p: any) => ({
+    databaseId: p.databaseId,
+    name: p.name,
+    slug: p.slug,
+    price: p.price,
+    regularPrice: p.regularPrice,
+    salePrice: p.salePrice,
+    stockStatus: p.stockStatus,
+    image: p.image ? { sourceUrl: p.image.sourceUrl, altText: p.image.altText } : null,
+    isVariable: Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0,
+    attributes: p.attributes?.nodes ?? [],
+  }))
+);
+
+const CATS_WITH_SIZE_JSON = JSON.stringify([...CATS_WITH_SIZE]);
+const CATS_WITH_COLOR_JSON = JSON.stringify([...CATS_WITH_COLOR]);
+const COLORS_JSON = JSON.stringify(COLORS);
+const SIZES_JSON = JSON.stringify(sizes);
+---
+
+<Layout title={`${category.name} - Products`}>
+  <div class="max-w-7xl mx-auto px-4 py-12">
+
+    <div class="mb-8 flex items-center justify-between">
+      <h1 class="font-(--font-heading) text-4xl text-(--color-text-base)">{category.name}</h1>
+      <p id="result-count" class="text-(--color-text-muted) text-sm">{allProducts.length} results</p>
+    </div>
+
+    <!-- All categories -->
+    <div class="mb-6 flex flex-wrap gap-2 border-b border-(--color-border) pb-6">
+      <a
+        href="/products"
+        class="px-4 py-2 text-sm border transition-colors border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)"
+      >
+        All Products
+      </a>
+    </div>
+
+    <!-- Size filter (contextual) -->
+    {showSizeFilter && (
+      <div id="size-filters" class="mb-4 flex flex-wrap items-center gap-2 border-b border-(--color-border) pb-4">
+        <span class="text-sm text-(--color-text-muted) mr-1">Size:</span>
+        <button data-filter="size" data-value="" class="size-btn px-3 py-1 text-xs border transition-colors bg-(--color-btn-cta) text-white border-(--color-btn-cta)">All</button>
+        {sizes.map((s: string) => (
+          <button data-filter="size" data-value={s} class="size-btn px-3 py-1 text-xs border transition-colors border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)">{s}</button>
+        ))}
+      </div>
+    )}
+
+    <!-- Color filter (contextual) -->
+    {showColorFilter && (
+      <div id="color-filters" class="mb-6 flex flex-wrap items-center gap-2 border-b border-(--color-border) pb-4">
+        <span class="text-sm text-(--color-text-muted) mr-1">Color:</span>
+        <button data-filter="color" data-value="" class="color-btn px-3 py-1 text-xs border transition-colors bg-(--color-btn-cta) text-white border-(--color-btn-cta)">All</button>
+        {COLORS.map((c: string) => (
+          <button data-filter="color" data-value={c} class="color-btn px-3 py-1 text-xs border transition-colors border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)">{c}</button>
+        ))}
+      </div>
+    )}
+
+    <!-- Sort + Price filters -->
+    <div class="mb-8 flex flex-wrap items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-(--color-text-muted)">Sort:</span>
+        <div id="sort-filters" class="flex gap-2">
+          {[
+            { label: 'Default', value: '' },
+            { label: 'Price ↑', value: 'price-asc' },
+            { label: 'Price ↓', value: 'price-desc' },
+            { label: 'Name A-Z', value: 'name-asc' },
+            { label: 'Name Z-A', value: 'name-desc' },
+          ].map(({ label, value }) => (
+            <button
+              data-filter="sort"
+              data-value={value}
+              class={`sort-btn px-3 py-1.5 text-xs border transition-colors ${!value ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form id="price-form" class="flex items-center gap-2 ml-auto">
+        <span class="text-sm text-(--color-text-muted)">Price:</span>
+        <input
+          type="number"
+          id="min-price"
+          placeholder="Min"
+          min="0"
+          class="w-20 px-2 py-1.5 text-xs border border-(--color-border) bg-(--color-surface) outline-none focus:border-(--color-btn-cta) transition-colors"
+        />
+        <span class="text-xs text-(--color-text-muted)">—</span>
+        <input
+          type="number"
+          id="max-price"
+          placeholder="Max"
+          min="0"
+          class="w-20 px-2 py-1.5 text-xs border border-(--color-border) bg-(--color-surface) outline-none focus:border-(--color-btn-cta) transition-colors"
+        />
+        <button
+          type="submit"
+          class="px-3 py-1.5 text-xs bg-(--color-btn-cta) text-white hover:bg-(--color-btn-cta-hover) transition-colors"
+        >
+          Apply
+        </button>
+        <button
+          type="button"
+          id="clear-price"
+          class="hidden px-3 py-1.5 text-xs border border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta) transition-colors"
+        >
+          Clear
+        </button>
+      </form>
+    </div>
+
+    <!-- Product grid -->
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {allProducts.map((p: any) => {
+        let isInStock = true;
+        if (typeof p.stockStatus === 'string') {
+          isInStock = p.stockStatus === 'IN_STOCK';
+        }
+        const isVariable = Array.isArray(p.attributes?.nodes) && p.attributes.nodes.length > 0;
+
+        return (
+          <ProductCard
+            databaseId={p.databaseId}
+            name={p.name}
+            slug={p.slug}
+            price={p.price}
+            regularPrice={p.regularPrice}
+            salePrice={p.salePrice}
+            image={p.image}
+            isVariable={isVariable}
+            isInStock={isInStock}
+          />
+        );
+      })}
+    </div>
+
+    <!-- No results message -->
+    <div id="no-results" class="hidden text-center py-24">
+      <p class="text-(--color-text-muted) text-lg">No products found.</p>
+      <a href="/products" class="mt-4 inline-block text-sm text-(--color-btn-cta) hover:underline">Browse all products</a>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="text-center mt-12">
+      <button
+        id="load-more"
+        class="border border-(--color-btn-cta) text-(--color-btn-cta) px-10 py-3 text-sm font-medium tracking-wide hover:bg-(--color-btn-cta) hover:text-white transition-colors inline-block"
+      >
+        Load More
+      </button>
+    </div>
+
+  </div>
+
+  <script define:vars={{ productsJSON, CATS_WITH_SIZE_JSON, CATS_WITH_COLOR_JSON, COLORS_JSON, SIZES_JSON }}>
+    const ALL_PRODUCTS = JSON.parse(productsJSON);
+    const CATS_SIZE = JSON.parse(CATS_WITH_SIZE_JSON);
+    const CATS_COLOR = JSON.parse(CATS_WITH_COLOR_JSON);
+    const FILTER_COLORS = JSON.parse(COLORS_JSON);
+    const SIZES = JSON.parse(SIZES_JSON);
+
+    const PAGE_SIZE = 24;
+    let currentSize = '';
+    let currentColor = '';
+    let currentSort = '';
+    let currentMinPrice = null;
+    let currentMaxPrice = null;
+    let visibleCount = PAGE_SIZE;
+
+    const grid = document.getElementById('product-grid');
+    const resultCount = document.getElementById('result-count');
+    const noResults = document.getElementById('no-results');
+    const pagination = document.getElementById('pagination');
+    const loadMoreBtn = document.getElementById('load-more');
+
+    function parsePrice(priceStr) {
+      if (!priceStr) return null;
+      const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    }
+
+    function getFilteredProducts() {
+      return ALL_PRODUCTS.filter(p => {
+        if (currentSize) {
+          const hasSize = (p.attributes || []).some(a =>
+            a.name === 'pa_size' && a.options.map(o => o.toLowerCase()).includes(currentSize.toLowerCase())
+          );
+          if (!hasSize) return false;
+        }
+        if (currentColor) {
+          const hasColor = (p.attributes || []).some(a =>
+            a.name === 'pa_color' && a.options.map(o => o.toLowerCase()).includes(currentColor.toLowerCase())
+          );
+          if (!hasColor) return false;
+        }
+        const price = parsePrice(p.price);
+        if (currentMinPrice !== null && (price === null || price < currentMinPrice)) return false;
+        if (currentMaxPrice !== null && (price === null || price > currentMaxPrice)) return false;
+        return true;
+      }).sort((a, b) => {
+        if (currentSort === 'price-asc') return (parsePrice(a.price) || 0) - (parsePrice(b.price) || 0);
+        if (currentSort === 'price-desc') return (parsePrice(b.price) || 0) - (parsePrice(a.price) || 0);
+        if (currentSort === 'name-asc') return a.name.localeCompare(b.name);
+        if (currentSort === 'name-desc') return b.name.localeCompare(a.name);
+        return 0;
+      });
+    }
+
+    function updateActiveButtons() {
+      document.querySelectorAll('[data-filter="size"]').forEach(btn => {
+        const val = btn.getAttribute('data-value');
+        const isActive = val === currentSize;
+        btn.classList.toggle('bg-(--color-btn-cta)', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('border-(--color-btn-cta)', isActive);
+        btn.classList.toggle('border-(--color-border)', !isActive);
+        btn.classList.toggle('text-(--color-text-muted)', !isActive);
+      });
+      document.querySelectorAll('[data-filter="color"]').forEach(btn => {
+        const val = btn.getAttribute('data-value');
+        const isActive = val === currentColor;
+        btn.classList.toggle('bg-(--color-btn-cta)', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('border-(--color-btn-cta)', isActive);
+        btn.classList.toggle('border-(--color-border)', !isActive);
+        btn.classList.toggle('text-(--color-text-muted)', !isActive);
+      });
+      document.querySelectorAll('[data-filter="sort"]').forEach(btn => {
+        const val = btn.getAttribute('data-value') || '';
+        const isActive = val === currentSort;
+        btn.classList.toggle('bg-(--color-btn-cta)', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('border-(--color-btn-cta)', isActive);
+        btn.classList.toggle('border-(--color-border)', !isActive);
+        btn.classList.toggle('text-(--color-text-muted)', !isActive);
+      });
+    }
+
+    function renderProducts() {
+      const filtered = getFilteredProducts();
+      const cards = grid.querySelectorAll('.product-card');
+      const filteredSlugs = new Set(filtered.map(p => p.slug));
+
+      let visibleIndex = 0;
+      cards.forEach(card => {
+        const href = card.querySelector('a')?.getAttribute('href') || '';
+        const cardSlug = href.split('/products/')[1] || '';
+        const isFiltered = filteredSlugs.has(cardSlug);
+        if (!isFiltered) {
+          card.style.display = 'none';
+        } else if (visibleIndex >= visibleCount) {
+          card.style.display = 'none';
+        } else {
+          card.style.display = '';
+          visibleIndex++;
+        }
+      });
+
+      resultCount.textContent = filtered.length + ' results';
+      noResults.classList.toggle('hidden', filtered.length > 0);
+      pagination.classList.toggle('hidden', filtered.length <= visibleCount);
+      updateActiveButtons();
+    }
+
+    document.querySelectorAll('[data-filter="size"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSize = btn.getAttribute('data-value') || '';
+        visibleCount = PAGE_SIZE;
+        renderProducts();
+      });
+    });
+
+    document.querySelectorAll('[data-filter="color"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentColor = btn.getAttribute('data-value') || '';
+        visibleCount = PAGE_SIZE;
+        renderProducts();
+      });
+    });
+
+    document.querySelectorAll('[data-filter="sort"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSort = btn.getAttribute('data-value') || '';
+        visibleCount = PAGE_SIZE;
+        renderProducts();
+      });
+    });
+
+    document.getElementById('price-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const minVal = document.getElementById('min-price').value;
+      const maxVal = document.getElementById('max-price').value;
+      currentMinPrice = minVal ? parseFloat(minVal) : null;
+      currentMaxPrice = maxVal ? parseFloat(maxVal) : null;
+      visibleCount = PAGE_SIZE;
+      document.getElementById('clear-price').classList.toggle('hidden', !currentMinPrice && !currentMaxPrice);
+      renderProducts();
+    });
+
+    document.getElementById('clear-price').addEventListener('click', () => {
+      currentMinPrice = null;
+      currentMaxPrice = null;
+      document.getElementById('min-price').value = '';
+      document.getElementById('max-price').value = '';
+      document.getElementById('clear-price').classList.add('hidden');
+      visibleCount = PAGE_SIZE;
+      renderProducts();
+    });
+
+    loadMoreBtn.addEventListener('click', () => {
+      visibleCount += PAGE_SIZE;
+      renderProducts();
+    });
+
+    renderProducts();
+  </script>
+
+</Layout>

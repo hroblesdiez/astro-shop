@@ -287,3 +287,50 @@ export const GET_PRODUCTS_FILTERED = gql`
     }
   }
 `;
+
+export const GET_ALL_PRODUCTS_FULL = gql`
+  query GetAllProductsFull($first: Int = 100, $after: String) {
+    products(first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        databaseId
+        name
+        slug
+        ... on SimpleProduct {
+          price
+          regularPrice
+          salePrice
+          stockStatus
+          image {
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
+            altText
+          }
+        }
+        ... on VariableProduct {
+          price
+          regularPrice
+          salePrice
+          stockStatus
+          image {
+            sourceUrl(size: WOOCOMMERCE_THUMBNAIL)
+            altText
+          }
+          attributes {
+            nodes {
+              name
+              options
+            }
+          }
+        }
+        productCategories {
+          nodes {
+            slug
+          }
+        }
+      }
+    }
+  }
+`;

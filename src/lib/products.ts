@@ -8,7 +8,29 @@ import {
   GET_CATEGORIES,
   GET_PRODUCTS_BY_CATEGORY,
   GET_PRODUCTS_FILTERED,
+  GET_ALL_PRODUCTS_FULL,
 } from "../queries/products";
+
+export async function getAllProductsForListing(): Promise<any[]> {
+  const allProducts: any[] = [];
+  let after: string | undefined;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const data = await cachedRequest<{
+      products: {
+        nodes: any[];
+        pageInfo: { hasNextPage: boolean; endCursor: string };
+      };
+    }>(GET_ALL_PRODUCTS_FULL, { first: 50, after: after ?? null });
+    const { nodes, pageInfo } = data.products;
+    allProducts.push(...nodes);
+    hasNextPage = pageInfo.hasNextPage;
+    after = pageInfo.endCursor;
+  }
+
+  return allProducts;
+}
 
 export async function getAllProductSlugs(): Promise<string[]> {
   const allSlugs: string[] = [];
@@ -77,6 +99,27 @@ export async function getProductsByCategory(
     after,
   });
   return data.products;
+}
+
+export async function getAllProductsByCategory(category: string): Promise<any[]> {
+  const allProducts: any[] = [];
+  let after: string | undefined;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const data = await cachedRequest<{
+      products: {
+        nodes: any[];
+        pageInfo: { hasNextPage: boolean; endCursor: string };
+      };
+    }>(GET_PRODUCTS_BY_CATEGORY, { category, first: 25, after: after ?? null });
+    const { nodes, pageInfo } = data.products;
+    allProducts.push(...nodes);
+    hasNextPage = pageInfo.hasNextPage;
+    after = pageInfo.endCursor;
+  }
+
+  return allProducts;
 }
 
 export async function getProductsFiltered({

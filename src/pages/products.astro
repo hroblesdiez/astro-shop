@@ -98,7 +98,7 @@ function filterUrl(key: string, value: string | undefined) {
       </a>
       {categories.map((cat: any) => (
         <a
-          href={buildUrl({ category: cat.slug, sort: sortParam || undefined, minPrice: minPrice?.toString(), maxPrice: maxPrice?.toString() })}
+          href={`/shop/${cat.slug}`}
           class={`px-4 py-2 text-sm border transition-colors ${category === cat.slug ? 'bg-(--color-btn-cta) text-white border-(--color-btn-cta)' : 'border-(--color-border) text-(--color-text-muted) hover:border-(--color-btn-cta) hover:text-(--color-btn-cta)'}`}
         >
           {cat.name}

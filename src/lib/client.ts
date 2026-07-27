@@ -8,7 +8,7 @@ if (!endpoint) {
 
 export const client = new GraphQLClient(endpoint, {
   fetch: (url, init) => {
-    const timeoutSignal = AbortSignal.timeout(30000);
+    const timeoutSignal = AbortSignal.timeout(120000);
     return fetch(url, { ...init, signal: timeoutSignal });
   },
 });
