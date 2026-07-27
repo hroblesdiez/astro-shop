@@ -1,5 +1,6 @@
 import { cachedRequest } from "./client";
 import {
+  GET_ALL_PRODUCT_SLUGS,
   GET_PRODUCTS,
   GET_PRODUCT_BY_SLUG,
   GET_TESTIMONIALS,
@@ -8,6 +9,27 @@ import {
   GET_PRODUCTS_BY_CATEGORY,
   GET_PRODUCTS_FILTERED,
 } from "../queries/products";
+
+export async function getAllProductSlugs(): Promise<string[]> {
+  const allSlugs: string[] = [];
+  let after: string | undefined;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const data = await cachedRequest<{
+      products: {
+        nodes: { slug: string }[];
+        pageInfo: { hasNextPage: boolean; endCursor: string };
+      };
+    }>(GET_ALL_PRODUCT_SLUGS, { first: 100, after: after ?? null });
+    const { nodes, pageInfo } = data.products;
+    allSlugs.push(...nodes.map((p) => p.slug));
+    hasNextPage = pageInfo.hasNextPage;
+    after = pageInfo.endCursor;
+  }
+
+  return allSlugs;
+}
 
 export async function getProducts(first = 12, after?: string) {
   const data = await cachedRequest<any>(GET_PRODUCTS, { first, after });

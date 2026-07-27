@@ -1,5 +1,19 @@
 import { gql } from "graphql-request";
 
+export const GET_ALL_PRODUCT_SLUGS = gql`
+  query GetAllProductSlugs($first: Int = 100, $after: String) {
+    products(first: $first, after: $after) {
+      nodes {
+        slug
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
 export const GET_PRODUCTS = gql`
   query GetProducts($first: Int = 12, $after: String) {
     products(first: $first, after: $after) {
